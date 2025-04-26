@@ -1,0 +1,15 @@
+{
+  "domain": "hivemind",
+  "name": "HiveMind",
+  "codeowners": ["@JarbasAI"],
+  "config_flow": true,
+  "documentation": "https://github.com/JarbasHiveMind/hivemind-home-assistant-notify",
+  "integration_type": "device",
+  "iot_class": "assumed_state",
+  "platforms": ["notify", "sensor", "button", "media_player"],
+  "loggers": ["hivemind_bus_client"],
+  "requirements": [
+    "hivemind_bus_client>=0.4.3"
+  ],
+  "version": "0.0.2"
+}
