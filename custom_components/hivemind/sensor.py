@@ -1,6 +1,7 @@
 """HiveMind notification platform."""
 import logging
 
+from ovos_bus_client.message import Message
 from hivemind_bus_client.client import HiveMessageBusClient
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
@@ -61,6 +62,88 @@ class HiveMindConnectionSensor(BinarySensorEntity):
         return "mdi:lan-disconnect"
 
 
+class HiveMindAliveSensor(HiveMindConnectionSensor):
+    """Binary Sensor for process ALIVE status."""
+    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, proc_name: str, **kwargs) -> None:
+        super().__init__(bus, site_id, name, **kwargs)
+        self._proc_name = proc_name
+        self._alive = False
+        self.bus.on_mycroft(f"mycroft.{self._proc_name}.is_alive.response", self.handle_update)
+
+    def handle_update(self, message: Message):
+        self._alive = message.data.get("status", False)
+        self.schedule_update_ha_state()
+
+    async def async_update(self):
+        self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.is_alive"))
+
+    @property
+    def name(self):
+        """Name of the entity."""
+        return f"hm-alive-sensor-{self._proc_name}-{self._name}"
+
+    @property
+    def available(self) -> bool:
+        return self.bus.handshake_event.is_set()
+
+    @property
+    def is_on(self) -> bool:
+        """Return the status of the binary sensor (True if service alive)."""
+        return self._alive
+
+    @property
+    def device_class(self) -> BinarySensorDeviceClass:
+        return BinarySensorDeviceClass.RUNNING
+
+    @property
+    def icon(self) -> str | None:
+        """Return the icon for the binary sensor."""
+        if self.is_on:
+            return "mdi:check-circle"
+        return "mdi:alert-circle"
+
+
+class HiveMindReadySensor(HiveMindConnectionSensor):
+    """Binary Sensor for process READY status."""
+    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, proc_name: str, **kwargs) -> None:
+        super().__init__(bus, site_id, name, **kwargs)
+        self._proc_name = proc_name
+        self._ready = False
+        self.bus.on_mycroft(f"mycroft.{self._proc_name}.is_ready.response", self.handle_update)
+
+    def handle_update(self, message: Message):
+        self._ready = message.data.get("status", False)
+        self.schedule_update_ha_state()
+
+    async def async_update(self):
+        self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.is_ready"))
+
+    @property
+    def name(self):
+        """Name of the entity."""
+        return f"hm-ready-sensor-{self._proc_name}-{self._name}"
+
+    @property
+    def available(self) -> bool:
+        return self.bus.handshake_event.is_set()
+
+    @property
+    def is_on(self) -> bool:
+        """Return the status of the binary sensor (True if service ready)."""
+        return self._ready
+
+    @property
+    def device_class(self) -> BinarySensorDeviceClass:
+        return BinarySensorDeviceClass.RUNNING
+
+    @property
+    def icon(self) -> str | None:
+        """Return the icon for the binary sensor."""
+        if self.is_on:
+            return "mdi:check-circle"
+        return "mdi:alert-circle"
+
+
 async def async_setup_entry(
         hass: HomeAssistant,
         entry: ConfigEntry,
@@ -77,6 +160,22 @@ async def async_setup_entry(
         name=name,
         site_id=site_id
     )
+    sensors = [connection_sensor]
+    for proc in ["skills", "audio", "speech", "PHAL", "gui_service"]:
+        alive_sensor = HiveMindAliveSensor(
+            bus=entry.hm_bus,
+            name=name,
+            proc_name=proc,
+            site_id=site_id
+        )
+        sensors.append(alive_sensor)
+        ready_sensor = HiveMindReadySensor(
+            bus=entry.hm_bus,
+            name=name,
+            proc_name=proc,
+            site_id=site_id
+        )
+        sensors.append(ready_sensor)
 
     # Add it to Home Assistant
-    async_add_entities([connection_sensor])
+    async_add_entities(sensors)

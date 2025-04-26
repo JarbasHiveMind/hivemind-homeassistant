@@ -126,6 +126,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         self._track_artist = message.data.get("artist")
         self._track_artist = message.data.get("album")
         self._image = message.data.get("image")
+        self._uri = message.data.get("uri")
         self.schedule_update_ha_state()
 
     def handle_track_len(self, message: Message):
@@ -189,11 +190,11 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
                             self.handle_status)
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message("mycroft.volume.get"))
-        self.bus.emit_mycroft(Message("ovos.common_play.track_info"))
-        self.bus.emit_mycroft(Message("ovos.common_play.get_track_length"))
-        self.bus.emit_mycroft(Message("ovos.common_play.get_track_position"))
-        self.bus.emit_mycroft(Message("ovos.common_play.player.status"))
+        self.send_to_ovos(Message("mycroft.volume.get"))
+        self.send_to_ovos(Message("ovos.common_play.track_info"))
+        self.send_to_ovos(Message("ovos.common_play.get_track_length"))
+        self.send_to_ovos(Message("ovos.common_play.get_track_position"))
+        self.send_to_ovos(Message("ovos.common_play.player.status"))
 
     @property
     def available(self) -> bool:
@@ -245,10 +246,12 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
 
     @property
     def volume_level(self) -> float:
+        """via ovos-PHAL-plugin-alsa"""
         return self._volume_level
 
     @property
     def is_volume_muted(self) -> bool:
+        """via ovos-PHAL-plugin-alsa"""
         return self._is_muted
 
     @property
@@ -372,6 +375,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         else: # REPLACE / PLAY / NEXT
             m = "ovos.common_play.play"
 
+        self._uri = media_id
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.play',
                               {'tracks': [media_id]})
@@ -427,6 +431,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         self.async_write_ha_state()
 
     async def async_set_volume_level(self, volume):
+        """via ovos-PHAL-plugin-alsa"""
         self._volume_level = volume
         LOG.info(f"volume: {volume}")
         message = Message("mycroft.volume.set",
@@ -435,25 +440,28 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         self.send_to_ovos(message)
         self.async_write_ha_state()
 
-    async def async_volume_up(self, volume):
+    async def async_volume_up(self):
+        """via ovos-PHAL-plugin-alsa"""
         self._volume_level += 0.1
         self._volume_level = min(self._volume_level, 1.0)
-        LOG.info(f"volume: {volume}")
+        LOG.info(f"volume: {self._volume_level}")
         message = Message("mycroft.volume.increase")
 
         self.send_to_ovos(message)
         self.async_write_ha_state()
 
-    async def async_volume_down(self, volume):
+    async def async_volume_down(self):
+        """via ovos-PHAL-plugin-alsa"""
         self._volume_level -= 0.1
         self._volume_level = max(self._volume_level, 0)
-        LOG.info(f"volume: {volume}")
+        LOG.info(f"volume: {self._volume_level}")
         message = Message("mycroft.volume.decrease")
 
         self.send_to_ovos(message)
         self.async_write_ha_state()
 
     async def async_mute_volume(self, mute):
+        """via ovos-PHAL-plugin-alsa"""
         self._is_muted = mute
         LOG.info(f"set mute: {mute}")
         if mute:
@@ -491,7 +499,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
             message = Message('mycroft.audio.service.set_track_position',
                               {"position": int(position * 1000)})
         else:
-            message = Message('ovos.common_play.service.set_track_position',
+            message = Message('ovos.common_play.set_track_position',
                               {"position": position})
         self.send_to_ovos(message)
         LOG.info(f"seek: {position}")
@@ -519,13 +527,12 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
 
     async def async_set_repeat(self, repeat: RepeatMode) -> None:
         """Set repeat mode."""
-        if repeat == RepeatMode.OFF:
+        if repeat == RepeatMode.OFF: # no repeat
             message = Message('ovos.common_play.repeat.unset')
-        elif repeat == RepeatMode.ALL:
+        elif repeat == RepeatMode.ALL: # repeat playlist in loop
             message = Message('ovos.common_play.repeat.set')
-        else:
-            # TODO - not exposed in bus, only via gui....
-            message = Message('ovos.common_play.repeat.set')
+        else: # repeat same track in loop
+            message = Message('ovos.common_play.repeat.one')
 
         LOG.info(f"set repeat: {repeat}")
         self._repeat = repeat
