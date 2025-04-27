@@ -216,12 +216,12 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
     @property
     def name(self):
         """Name of the entity."""
-        return f"hm-ocp-{self._name}"
+        return f"OCP Player ({self._name})"
 
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID for this entity."""
-        return f"{self.name}-{self.site_id}".replace(" ", "")
+        return f"hm-ocp-{self._name}-{self.site_id}".replace(" ", "")
 
     def send_to_ovos(self, message: Message):
         payload = HiveMessage(HiveMessageType.BUS, message)

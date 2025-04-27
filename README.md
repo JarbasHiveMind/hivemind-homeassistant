@@ -60,12 +60,21 @@ Since this integration does **more than just voice queries**, it requires **low-
 The client connecting to HiveMind must have **admin privileges** and permission to access the following message types:
 
 ### ovos-core
+- `mycroft.stop`
 - `mycroft.skills.is_alive`
 - `mycroft.skills.is_ready`
 
 ### ovos-dinkum-listener
-- `mycroft.speech.is_alive`
-- `mycroft.speech.is_ready`
+- `mycroft.voice.is_alive`
+- `mycroft.voice.is_ready`
+- `mycroft.mic.listen`
+- `mycroft.mic.mute`
+- `mycroft.mic.unmute`
+- `mycroft.mic.get_status`
+- `recognizer_loop:sleep`
+- `recognizer_loop:wake_up`
+- `recognizer_loop:state.get`
+- `recognizer_loop:state.set`
 
 ### ovos-gui
 - `mycroft.gui_service.is_alive`
@@ -75,6 +84,7 @@ The client connecting to HiveMind must have **admin privileges** and permission 
 - `speak`
 - `mycroft.audio.is_alive`
 - `mycroft.audio.is_ready`
+- `mycroft.audio.speak.status`
 
 #### OCP (OpenVoiceOS Common Play)
 - `ovos.common_play.player.status`

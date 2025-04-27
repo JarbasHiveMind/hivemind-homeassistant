@@ -6,7 +6,7 @@
   "documentation": "https://github.com/JarbasHiveMind/hivemind-home-assistant-notify",
   "integration_type": "device",
   "iot_class": "assumed_state",
-  "platforms": ["notify", "sensor", "button", "media_player"],
+  "platforms": ["notify", "binary_sensor", "sensor", "button", "media_player", "switch", "select"],
   "loggers": ["hivemind_bus_client"],
   "requirements": [
     "hivemind_bus_client>=0.4.3"

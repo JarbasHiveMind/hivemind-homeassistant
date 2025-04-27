@@ -40,5 +40,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.hm_bus = await get_bus(entry)
 
     entry.hm_bus.connect(site_id=entry.data.get("site_id", "unknown"))
-    await hass.config_entries.async_forward_entry_setups(entry, ["notify", "sensor", "button", "media_player"])
+    await hass.config_entries.async_forward_entry_setups(entry, ["notify", "binary_sensor",  "sensor",
+                                                                 "button", "media_player", "switch", "select"])
     return True

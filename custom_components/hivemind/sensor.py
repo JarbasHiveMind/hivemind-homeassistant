@@ -1,9 +1,9 @@
 """HiveMind notification platform."""
 import logging
-
+from typing import List
 from ovos_bus_client.message import Message
 from hivemind_bus_client.client import HiveMessageBusClient
-from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -13,24 +13,29 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-class HiveMindConnectionSensor(BinarySensorEntity):
-    """Binary Sensor for HiveMind connection status."""
+class HiveMindListenerStateSensor(SensorEntity):
+    """Sensor for HiveMind listener state"""
 
     def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, **kwargs) -> None:
         """Initialize the service."""
         self._name = name.replace(" ", "-")
         self.site_id = site_id
         self.bus = bus
+        self._mode = "wakeword"
+
+        self.bus.on_mycroft("recognizer_loop:state", self.handle_loop_status)
+        self.bus.on_mycroft("recognizer_loop:sleep", self.handle_sleep_enabled)
+        self.bus.on_mycroft("recognizer_loop:awoken", self.handle_sleep_disabled)
 
     @property
     def name(self):
         """Name of the entity."""
-        return f"hm-connection-status-{self._name}"
+        return f"Listen State ({self._name})"
 
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID for this entity."""
-        return f"{self.name}-{self.site_id}".replace(" ", "")
+        return f"hm-listen-state-{self._name}-{self.site_id}".replace(" ", "")
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -46,102 +51,59 @@ class HiveMindConnectionSensor(BinarySensorEntity):
         )
 
     @property
-    def is_on(self) -> bool:
-        """Return the status of the binary sensor (True if connected)."""
-        return self.bus.handshake_event.is_set()
+    def device_class(self) -> SensorDeviceClass:
+        return SensorDeviceClass.ENUM
 
     @property
-    def device_class(self) -> BinarySensorDeviceClass:
-        return BinarySensorDeviceClass.CONNECTIVITY
+    def state_class(self) -> SensorStateClass :
+        return SensorStateClass.MEASUREMENT
 
     @property
-    def icon(self) -> str | None:
-        """Return the icon for the binary sensor."""
-        if self.is_on:
-            return "mdi:lan-connect"
-        return "mdi:lan-disconnect"
-
-
-class HiveMindAliveSensor(HiveMindConnectionSensor):
-    """Binary Sensor for process ALIVE status."""
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, proc_name: str, **kwargs) -> None:
-        super().__init__(bus, site_id, name, **kwargs)
-        self._proc_name = proc_name
-        self._alive = False
-        self.bus.on_mycroft(f"mycroft.{self._proc_name}.is_alive.response", self.handle_update)
-
-    def handle_update(self, message: Message):
-        self._alive = message.data.get("status", False)
-        self.schedule_update_ha_state()
+    def options(self) -> List[str]:
+        """Return the current listener state"""
+        return ["wakeword", "continuous", "recording",
+                "sleeping", "wake_up", "confirmation",
+                "before_cmd", "in_cmd", "after_cmd"]
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.is_alive"))
+        self.bus.emit_mycroft(Message(f"recognizer_loop:state.get"))
 
-    @property
-    def name(self):
-        """Name of the entity."""
-        return f"hm-alive-sensor-{self._proc_name}-{self._name}"
-
-    @property
-    def available(self) -> bool:
-        return self.bus.handshake_event.is_set()
-
-    @property
-    def is_on(self) -> bool:
-        """Return the status of the binary sensor (True if service alive)."""
-        return self._alive
-
-    @property
-    def device_class(self) -> BinarySensorDeviceClass:
-        return BinarySensorDeviceClass.RUNNING
-
-    @property
-    def icon(self) -> str | None:
-        """Return the icon for the binary sensor."""
-        if self.is_on:
-            return "mdi:check-circle"
-        return "mdi:alert-circle"
-
-
-class HiveMindReadySensor(HiveMindConnectionSensor):
-    """Binary Sensor for process READY status."""
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, proc_name: str, **kwargs) -> None:
-        super().__init__(bus, site_id, name, **kwargs)
-        self._proc_name = proc_name
-        self._ready = False
-        self.bus.on_mycroft(f"mycroft.{self._proc_name}.is_ready.response", self.handle_update)
-
-    def handle_update(self, message: Message):
-        self._ready = message.data.get("status", False)
+    def handle_loop_status(self, message: Message):
+        self._mode = message.data.get("state", "wakeword")
         self.schedule_update_ha_state()
 
-    async def async_update(self):
-        self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.is_ready"))
+    def handle_sleep_enabled(self, message: Message):
+        self._mode = "sleeping"
+        self.schedule_update_ha_state()
+
+    def handle_sleep_disabled(self, message: Message):
+        self._mode = "wake_up"
+        self.schedule_update_ha_state()
 
     @property
-    def name(self):
-        """Name of the entity."""
-        return f"hm-ready-sensor-{self._proc_name}-{self._name}"
-
-    @property
-    def available(self) -> bool:
-        return self.bus.handshake_event.is_set()
-
-    @property
-    def is_on(self) -> bool:
-        """Return the status of the binary sensor (True if service ready)."""
-        return self._ready
-
-    @property
-    def device_class(self) -> BinarySensorDeviceClass:
-        return BinarySensorDeviceClass.RUNNING
+    def native_value(self) -> str | None:
+        return self._mode
 
     @property
     def icon(self) -> str | None:
-        """Return the icon for the binary sensor."""
-        if self.is_on:
-            return "mdi:check-circle"
-        return "mdi:alert-circle"
+        if self._mode == "continuous":
+            return "mdi:microphone-settings"
+        elif self._mode == "sleeping":
+            return "mdi:sleep"
+        elif self._mode == "wakeword":
+            return "mdi:microphone-message"
+        elif self._mode == "recording":
+            return "mdi:record-rec"
+        elif self._mode == "before_cmd":
+            return "mdi:chat-sleep"
+        elif self._mode == "in_cmd":
+            return "mdi:chat-processing"
+        elif self._mode == "after_cmd":
+            return "mdi:chat"
+        elif self._mode == "wake_up":
+            return "mdi:chat-alert"
+        # elif self._mode == "confirmation"
+        return "mdi:music-box"
 
 
 async def async_setup_entry(
@@ -155,27 +117,11 @@ async def async_setup_entry(
     site_id = entry.data.get("site_id", "unknown")
 
     # Create the connection sensor entity
-    connection_sensor = HiveMindConnectionSensor(
+    listener_sensor = HiveMindListenerStateSensor(
         bus=entry.hm_bus,
         name=name,
         site_id=site_id
     )
-    sensors = [connection_sensor]
-    for proc in ["skills", "audio", "speech", "PHAL", "gui_service"]:
-        alive_sensor = HiveMindAliveSensor(
-            bus=entry.hm_bus,
-            name=name,
-            proc_name=proc,
-            site_id=site_id
-        )
-        sensors.append(alive_sensor)
-        ready_sensor = HiveMindReadySensor(
-            bus=entry.hm_bus,
-            name=name,
-            proc_name=proc,
-            site_id=site_id
-        )
-        sensors.append(ready_sensor)
 
     # Add it to Home Assistant
-    async_add_entities(sensors)
+    async_add_entities([listener_sensor])
