@@ -22,7 +22,9 @@ It allows Home Assistant to directly control and interact with an OVOS device at
 
 ---
 
-## Home Assistant Device
+## Home Assistant Setup
+
+![image](https://github.com/user-attachments/assets/ecb329a3-312a-47b0-abe5-fb94a78f9628)
 
 Once a HiveMind device is added to HomeAssistant you will have several entities available
 
