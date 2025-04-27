@@ -24,7 +24,7 @@ It allows Home Assistant to directly control and interact with an OVOS device at
 
 ## Home Assistant Setup
 
-![image](https://github.com/user-attachments/assets/ecb329a3-312a-47b0-abe5-fb94a78f9628)
+![setup](https://github.com/user-attachments/assets/ecb329a3-312a-47b0-abe5-fb94a78f9628)
 
 Once a HiveMind device is added to HomeAssistant you will have several entities available
 
@@ -106,7 +106,7 @@ The client connecting to HiveMind must have **admin privileges** and permission 
 - `mycroft.audio.service.next`
 - `mycroft.audio.service.set_track_position`
 
-### PHAL (Personal Home Automation Layer)
+### PHAL
 - `mycroft.phal.is_alive`
 - `mycroft.phal.is_ready`
 
@@ -125,7 +125,7 @@ The client connecting to HiveMind must have **admin privileges** and permission 
 
 #### ovos-phal-plugin-camera
 
-(**work in progress**)
+(*work in progress*)
 
 - `ovos.phal.camera.ping`
 - `ovos.phal.camera.get`
