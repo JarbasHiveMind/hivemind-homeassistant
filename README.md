@@ -28,11 +28,11 @@ It allows Home Assistant to directly control and interact with an OVOS device at
 
 Once a HiveMind device is added to HomeAssistant you will have several entities available
 
-![image](https://github.com/user-attachments/assets/4014f934-6a6d-4b7f-8e13-12781df64bac)
+![image](https://github.com/user-attachments/assets/f4a56e28-96e1-470e-99cc-0f9e8707b37f)
 
 controls
 
-![image](https://github.com/user-attachments/assets/b33991d9-92bc-4f4c-a3e3-f0f87bd3a6aa)
+![image](https://github.com/user-attachments/assets/d76cd0a6-7dc1-4af8-93d3-73668e11a405)
 
 media player
 
@@ -44,7 +44,7 @@ notify
 
 status sensors
 
-![image](https://github.com/user-attachments/assets/de6337ea-6731-4796-b723-4770b91df1d2)
+![image](https://github.com/user-attachments/assets/5f98232b-1243-445f-98ed-bb03e23a50b5)
 
 
 ## Music Assistant
