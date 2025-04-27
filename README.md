@@ -22,6 +22,35 @@ It allows Home Assistant to directly control and interact with an OVOS device at
 
 ---
 
+## Home Assistant Device
+
+Once a HiveMind device is added to HomeAssistant you will have several entities available
+
+![image](https://github.com/user-attachments/assets/4014f934-6a6d-4b7f-8e13-12781df64bac)
+
+controls
+
+![image](https://github.com/user-attachments/assets/b33991d9-92bc-4f4c-a3e3-f0f87bd3a6aa)
+
+media player
+
+![image](https://github.com/user-attachments/assets/9bb3bdba-bce0-47f5-b837-6f934eff67ef)
+
+notify
+
+![image](https://github.com/user-attachments/assets/57a797f7-06a6-4d12-9eb0-a3496fe32748)
+
+status sensors
+
+![image](https://github.com/user-attachments/assets/de6337ea-6731-4796-b723-4770b91df1d2)
+
+
+## Music Assistant
+
+![image](https://github.com/user-attachments/assets/1b0adcb0-bb92-4125-82ee-36367ce2bf60)
+
+---
+
 ## Permissions Required
 
 Since this integration does **more than just voice queries**, it requires **low-level permissions** to inject and control bus messages directly.  
