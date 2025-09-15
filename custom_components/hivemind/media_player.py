@@ -190,11 +190,12 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
                             self.handle_status)
 
     async def async_update(self):
-        self.send_to_ovos(Message("mycroft.volume.get"))
-        self.send_to_ovos(Message("ovos.common_play.track_info"))
-        self.send_to_ovos(Message("ovos.common_play.get_track_length"))
-        self.send_to_ovos(Message("ovos.common_play.get_track_position"))
-        self.send_to_ovos(Message("ovos.common_play.player.status"))
+        if self.available:
+            self.send_to_ovos(Message("mycroft.volume.get"))
+            self.send_to_ovos(Message("ovos.common_play.track_info"))
+            self.send_to_ovos(Message("ovos.common_play.get_track_length"))
+            self.send_to_ovos(Message("ovos.common_play.get_track_position"))
+            self.send_to_ovos(Message("ovos.common_play.player.status"))
 
     @property
     def available(self) -> bool:

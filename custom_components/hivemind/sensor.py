@@ -66,7 +66,8 @@ class HiveMindListenerStateSensor(SensorEntity):
                 "before_cmd", "in_cmd", "after_cmd"]
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message(f"recognizer_loop:state.get"))
+        if self.available:
+            self.bus.emit_mycroft(Message(f"recognizer_loop:state.get"))
 
     def handle_loop_status(self, message: Message):
         self._mode = message.data.get("state", "wakeword")

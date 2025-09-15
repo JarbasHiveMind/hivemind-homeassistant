@@ -30,7 +30,8 @@ class HiveMindSSHSwitch(SwitchEntity):
     def available(self) -> bool:
         return self.bus.handshake_event.is_set()
 
-    def device_class(self) -> SwitchDeviceClass | None:
+    @property
+    def device_class(self) -> SwitchDeviceClass:
         return SwitchDeviceClass.SWITCH
 
     @property
@@ -57,7 +58,8 @@ class HiveMindSSHSwitch(SwitchEntity):
         return f"hm-ssh-switch-{self._name}-{self.site_id}".replace(" ", "")
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message(f"system.ssh.status"))
+        if self.available:
+            self.bus.emit_mycroft(Message(f"system.ssh.status"))
 
     def handle_ssh_status(self, message: Message):
         self._enabled = message.data.get("enabled", False)
@@ -107,7 +109,8 @@ class HiveMindVolumeMuteSwitch(SwitchEntity):
     def available(self) -> bool:
         return self.bus.handshake_event.is_set()
 
-    def device_class(self) -> SwitchDeviceClass | None:
+    @property
+    def device_class(self) -> SwitchDeviceClass:
         return SwitchDeviceClass.SWITCH
 
     @property
@@ -134,7 +137,8 @@ class HiveMindVolumeMuteSwitch(SwitchEntity):
         return f"hm-volume-mute-switch-{self._name}-{self.site_id}".replace(" ", "")
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message(f"mycroft.volume.get"))
+        if self.available:
+            self.bus.emit_mycroft(Message(f"mycroft.volume.get"))
 
     def handle_mute_status(self, message: Message):
         self._muted = message.data.get("muted", False)
@@ -184,7 +188,8 @@ class HiveMindMicMuteSwitch(SwitchEntity):
     def available(self) -> bool:
         return self.bus.handshake_event.is_set()
 
-    def device_class(self) -> SwitchDeviceClass | None:
+    @property
+    def device_class(self) -> SwitchDeviceClass:
         return SwitchDeviceClass.SWITCH
 
     @property
@@ -211,7 +216,8 @@ class HiveMindMicMuteSwitch(SwitchEntity):
         return f"hm-mic-mute-switch-{self._name}-{self.site_id}".replace(" ", "")
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message(f"mycroft.mic.get_status"))
+        if self.available:
+            self.bus.emit_mycroft(Message(f"mycroft.mic.get_status"))
 
     def handle_mute_status(self, message: Message):
         self._muted = message.data.get("muted", False)
@@ -255,7 +261,8 @@ class HiveMindSleepModeSwitch(SwitchEntity):
     def available(self) -> bool:
         return self.bus.handshake_event.is_set()
 
-    def device_class(self) -> SwitchDeviceClass | None:
+    @property
+    def device_class(self) -> SwitchDeviceClass:
         return SwitchDeviceClass.SWITCH
 
     @property
@@ -282,7 +289,8 @@ class HiveMindSleepModeSwitch(SwitchEntity):
         return f"hm-sleep-switch-{self._name}-{self.site_id}".replace(" ", "")
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message(f"recognizer_loop:state.get"))
+        if self.available:
+            self.bus.emit_mycroft(Message(f"recognizer_loop:state.get"))
 
     def handle_sleep_status(self, message: Message):
         self._sleeping = message.data.get("state", "wakeword") == "sleeping"

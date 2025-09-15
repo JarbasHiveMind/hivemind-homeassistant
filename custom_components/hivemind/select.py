@@ -53,7 +53,8 @@ class HiveMindListeningMode(SelectEntity):
         return f"hm-listen-mode-{self._name}-{self.site_id}".replace(" ", "")
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message(f"recognizer_loop:state.get"))
+        if self.available:
+            self.bus.emit_mycroft(Message(f"recognizer_loop:state.get"))
 
     def handle_loop_status(self, message: Message):
         mode = message.data.get("mode", "wakeword")

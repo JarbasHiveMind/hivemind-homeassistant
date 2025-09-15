@@ -78,7 +78,8 @@ class HiveMindSpeakingSensor(BinarySensorEntity):
         self.schedule_update_ha_state()
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message("mycroft.audio.speak.status"))
+        if self.available:
+            self.bus.emit_mycroft(Message("mycroft.audio.speak.status"))
 
     @property
     def name(self):
@@ -133,7 +134,8 @@ class HiveMindAliveSensor(HiveMindConnectionSensor):
         self.schedule_update_ha_state()
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.is_alive"))
+        if self.available:
+            self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.is_alive"))
 
     @property
     def name(self):
@@ -191,7 +193,8 @@ class HiveMindReadySensor(HiveMindConnectionSensor):
         self.schedule_update_ha_state()
 
     async def async_update(self):
-        self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.is_ready"))
+        if self.available:
+            self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.is_ready"))
 
     @property
     def name(self):
