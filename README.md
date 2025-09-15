@@ -6,6 +6,15 @@ It allows Home Assistant to directly control and interact with an OVOS device at
 
 ---
 
+## Related Projects:
+
+- [hivemind-homeassistant](https://github.com/JarbasHiveMind/hivemind-homeassistant) (this repo) allows HiveMind to show up as a player in Home Assistant
+- [hivemind-player-protocol](https://github.com/HiveMindInsiders/hivemind-player-protocol) turn any device into a standalone HiveMind OCP player
+- [ovos-skill-music-assistant](https://github.com/HiveMindInsiders/ovos-skill-music-assistant) allows OVOS to search media in MA sources
+- [ovos-media-plugin-mass](https://github.com/HiveMindInsiders/ovos-media-plugin-mass) allows OVOS to control MA players
+  
+---
+
 ## Manual Installation
 
 1. Copy the `hivemind` folder into your Home Assistant `custom_components` directory:
@@ -51,11 +60,6 @@ status sensors
 
 ![image](https://github.com/user-attachments/assets/1b0adcb0-bb92-4125-82ee-36367ce2bf60)
 
-
-**Related Projects:**
-
-- [ovos-skill-music-assistant](https://github.com/HiveMindInsiders/ovos-skill-music-assistant) allows OVOS to search media in MA sources
-- [ovos-media-plugin-mass](https://github.com/HiveMindInsiders/ovos-media-plugin-mass) allows OVOS to control MA players
 
 ---
 
