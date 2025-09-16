@@ -1,5 +1,6 @@
 """Send notifications to HiveMind devices"""
 
+import logging
 import os
 
 from hivemind_bus_client.client import HiveMessageBusClient
@@ -8,7 +9,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from json_database import JsonStorage
 from ovos_utils.fakebus import FakeBus
+
 from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def get_bus(entry) -> HiveMessageBusClient:
@@ -19,7 +23,7 @@ async def get_bus(entry) -> HiveMessageBusClient:
     port = entry.data.get("port", 5678)
     self_signed = entry.data.get("allow_self_signed", False)
 
-    ovos_bus = FakeBus() # explicitly passed so we use "default" session, otherwise HM assigns random session_id
+    ovos_bus = FakeBus()  # explicitly passed so we use "default" session, otherwise HM assigns random session_id
     ovos_bus.session_id = entry.data.get("session_id", "default")
 
     identity_file = JsonStorage(f"{os.path.dirname(__file__)}/_identity.json")
@@ -43,7 +47,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.hm_bus = await get_bus(entry)
 
-    await hass.async_add_executor_job(entry.hm_bus.connect)
+    async def _connect_later():
+        try:
+            await hass.async_add_executor_job(entry.hm_bus.connect)
+            _LOGGER.info("Connected to HiveMind bus")
+        except Exception as e:
+            _LOGGER.warning(f"Initial HiveMind connection failed, will retry in background: {e}")
+            # hm_bus.connect() already has its own retry/backoff logic
+
+
+    hass.loop.create_task(_connect_later())
 
     domains = ["binary_sensor", "button", "switch"]
     if device_type in ["voice_assistant", "media_player"]:
