@@ -289,38 +289,50 @@ async def async_setup_entry(
     # Get config values
     name = entry.data.get("name", "unnamed device")
     site_id = entry.data.get("site_id", "unknown")
+    device_type = entry.data.get("device_type", "voice_assistant")
 
-    # Create the connection button entity
-    connection_button = HiveMindConnectionButton(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
-    reboot_button = HiveMindSystemRebootButton(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
-    restart_button = HiveMindRestartButton(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
-    shutdown_button = HiveMindSystemShutdownButton(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
-    listen_button = HiveMindMicListenButton(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
-    stop_button = HiveMindStopButton(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
+
+    base_buttons = [
+        HiveMindConnectionButton(
+            bus=entry.hm_bus,
+            name=name,
+            site_id=site_id
+        ),
+        HiveMindStopButton(
+            bus=entry.hm_bus,
+            name=name,
+            site_id=site_id
+        )
+    ]
+
+    phal_buttons = [
+        HiveMindSystemRebootButton(
+            bus=entry.hm_bus,
+            name=name,
+            site_id=site_id
+        ),
+        HiveMindRestartButton(
+            bus=entry.hm_bus,
+            name=name,
+            site_id=site_id
+        ),
+        HiveMindSystemShutdownButton(
+            bus=entry.hm_bus,
+            name=name,
+            site_id=site_id
+        )
+    ]
+
+    entities = base_buttons + phal_buttons
+
+    if device_type == "voice_assistant":
+        entities += [
+            HiveMindMicListenButton(
+                bus=entry.hm_bus,
+                name=name,
+                site_id=site_id
+            )
+        ]
 
     # Add it to Home Assistant
-    async_add_entities([connection_button, listen_button, reboot_button, shutdown_button, restart_button, stop_button])
+    async_add_entities(entities)

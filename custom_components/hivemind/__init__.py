@@ -8,7 +8,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from json_database import JsonStorage
 from ovos_utils.fakebus import FakeBus
-from ovos_utils.log import LOG, init_service_logger
 from .const import DOMAIN
 
 
@@ -37,7 +36,8 @@ async def get_bus(entry) -> HiveMessageBusClient:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    init_service_logger("hivemind-homeassistant")
+    device_type = entry.data.get("device_type", "voice_assistant")
+
     # Store config entry for this domain
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = entry
 
@@ -45,6 +45,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.async_add_executor_job(entry.hm_bus.connect)
 
-    await hass.config_entries.async_forward_entry_setups(entry, ["notify", "binary_sensor",  "sensor",
-                                                                 "button", "media_player", "switch", "select"])
+    domains = ["binary_sensor", "button", "switch"]
+    if device_type in ["voice_assistant", "media_player"]:
+        domains.extend(["notify", "media_player"])
+        if device_type == "voice_assistant":
+            domains += ["select", "sensor"]
+    await hass.config_entries.async_forward_entry_setups(entry, domains)
     return True

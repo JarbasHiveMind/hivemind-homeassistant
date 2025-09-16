@@ -94,17 +94,17 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         self.register_events()
 
     def handle_ocp_track_state(self, message: Message):
-        LOG.info(f"track data: {message.data}")
+        _LOGGER.info(f"track data: {message.data}")
 
     def handle_ocp_media_state(self, message: Message):
-        LOG.info(f"media state: {message.data}")
+        _LOGGER.info(f"media state: {message.data}")
         state = message.data["state"]
         if state == MediaState.END_OF_MEDIA:
             self._state = MediaPlayerState.IDLE
             self.schedule_update_ha_state()
 
     def handle_ocp_player_state(self, message: Message):
-        LOG.info(f"player state: {message.data}")
+        _LOGGER.info(f"player state: {message.data}")
         state = message.data["state"]
         if state == PlayerState.PAUSED:
             self._state = MediaPlayerState.PAUSED
@@ -115,13 +115,13 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         self.schedule_update_ha_state()
 
     def handle_volume_update(self, message: Message):
-        LOG.info(f"volume state: {message.data}")
+        _LOGGER.info(f"volume state: {message.data}")
         self._volume_level = message.data["percent"]
         self._is_muted = message.data["muted"]
         self.schedule_update_ha_state()
 
     def handle_track_info(self, message: Message):
-        LOG.info(f"track info: {message.data}")
+        _LOGGER.info(f"track info: {message.data}")
         self._track_title = message.data.get("title") or message.data.get("track")
         self._track_artist = message.data.get("artist")
         self._track_artist = message.data.get("album")
@@ -130,19 +130,19 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         self.schedule_update_ha_state()
 
     def handle_track_len(self, message: Message):
-        LOG.info(f"track info: {message.data}")
+        _LOGGER.info(f"track info: {message.data}")
         self._track_len = message.data["length"]
         self.schedule_update_ha_state()
 
     def handle_track_pos(self, message: Message):
-        LOG.info(f"track info: {message.data}")
+        _LOGGER.info(f"track info: {message.data}")
         self._playback_pos = message.data["position"]
         if "length" in message.data:
             self._track_len = message.data["length"]
         self.schedule_update_ha_state()
 
     def handle_status(self, message: Message):
-        LOG.info(f"OCP status: {message.data}")
+        _LOGGER.info(f"OCP status: {message.data}")
         player = message.data["state"]
         media = message.data["media_state"]
         repeat = message.data["repeat"]
@@ -227,10 +227,10 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
     def send_to_ovos(self, message: Message):
         payload = HiveMessage(HiveMessageType.BUS, message)
         try:
-            LOG.info(f"HiveMind Message: {payload.serialize()}")
+            _LOGGER.info(f"HiveMind Message: {payload.serialize()}")
             self.bus.emit(payload)
         except Exception as e:
-            LOG.error(f"Error from HiveMind messagebus: {e}")
+            _LOGGER.error(f"Error from HiveMind messagebus: {e}")
 
     ######
 
@@ -366,10 +366,10 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
 
         # Replace this with calling your media player play media function.
         #await self._media_player.play_url(media_id)
-        LOG.info(f"media_type: {media_type}")
-        LOG.info(f"media_id: {media_id}")
-        LOG.info(f"enqueue: {enqueue}")
-        LOG.info(f"announce: {announce}")
+        _LOGGER.info(f"media_type: {media_type}")
+        _LOGGER.info(f"media_id: {media_id}")
+        _LOGGER.info(f"enqueue: {enqueue}")
+        _LOGGER.info(f"announce: {announce}")
 
         if enqueue == MediaPlayerEnqueue.ADD:
             m = "ovos.common_play.playlist.queue"
@@ -405,13 +405,13 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
             message = Message('mycroft.audio.service.resume')
         else:
             message = Message('ovos.common_play.resume')
-        LOG.info(f"play")
+        _LOGGER.info(f"play")
         self.send_to_ovos(message)
         self.async_write_ha_state()
 
     async def async_media_pause(self):
         self._state = STATE_PAUSED
-        LOG.info(f"pause")
+        _LOGGER.info(f"pause")
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.pause')
         else:
@@ -422,7 +422,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
 
     async def async_media_stop(self):
         self._state = STATE_IDLE
-        LOG.info(f"stop")
+        _LOGGER.info(f"stop")
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.stop')
         else:
@@ -434,7 +434,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
     async def async_set_volume_level(self, volume):
         """via ovos-PHAL-plugin-alsa"""
         self._volume_level = volume
-        LOG.info(f"volume: {volume}")
+        _LOGGER.info(f"volume: {volume}")
         message = Message("mycroft.volume.set",
                           {"percent": volume})
 
@@ -445,7 +445,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         """via ovos-PHAL-plugin-alsa"""
         self._volume_level += 0.1
         self._volume_level = min(self._volume_level, 1.0)
-        LOG.info(f"volume: {self._volume_level}")
+        _LOGGER.info(f"volume: {self._volume_level}")
         message = Message("mycroft.volume.increase")
 
         self.send_to_ovos(message)
@@ -455,7 +455,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         """via ovos-PHAL-plugin-alsa"""
         self._volume_level -= 0.1
         self._volume_level = max(self._volume_level, 0)
-        LOG.info(f"volume: {self._volume_level}")
+        _LOGGER.info(f"volume: {self._volume_level}")
         message = Message("mycroft.volume.decrease")
 
         self.send_to_ovos(message)
@@ -464,7 +464,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
     async def async_mute_volume(self, mute):
         """via ovos-PHAL-plugin-alsa"""
         self._is_muted = mute
-        LOG.info(f"set mute: {mute}")
+        _LOGGER.info(f"set mute: {mute}")
         if mute:
             message = Message("mycroft.volume.mute")
         else:
@@ -479,13 +479,13 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
             message = Message('mycroft.audio.service.prev')
         else:
             message = Message('ovos.common_play.previous')
-        LOG.info("previous track")
+        _LOGGER.info("previous track")
         self.send_to_ovos(message)
         self.async_write_ha_state()
 
     async def async_media_next_track(self) -> None:
         """Send next track command."""
-        LOG.info("next track")
+        _LOGGER.info("next track")
 
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.next')
@@ -503,7 +503,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
             message = Message('ovos.common_play.set_track_position',
                               {"position": position})
         self.send_to_ovos(message)
-        LOG.info(f"seek: {position}")
+        _LOGGER.info(f"seek: {position}")
         self._playback_pos = position
         self.async_write_ha_state()
 
@@ -511,7 +511,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         """Clear players playlist."""
         message = Message('ovos.common_play.playlist.clear')
         self.send_to_ovos(message)
-        LOG.info(f"clear playlist")
+        _LOGGER.info(f"clear playlist")
         self.async_write_ha_state()
 
     async def async_set_shuffle(self, shuffle: bool) -> None:
@@ -521,7 +521,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         else:
             message = Message('ovos.common_play.shuffle.unset')
 
-        LOG.info(f"set shuffle: {shuffle}")
+        _LOGGER.info(f"set shuffle: {shuffle}")
         self.send_to_ovos(message)
         self._is_shuffle = shuffle
         self.async_write_ha_state()
@@ -535,7 +535,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         else: # repeat same track in loop
             message = Message('ovos.common_play.repeat.one')
 
-        LOG.info(f"set repeat: {repeat}")
+        _LOGGER.info(f"set repeat: {repeat}")
         self._repeat = repeat
         self.send_to_ovos(message)
         self.async_write_ha_state()

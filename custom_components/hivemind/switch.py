@@ -335,28 +335,42 @@ async def async_setup_entry(
     # Get config values
     name = entry.data.get("name", "unnamed device")
     site_id = entry.data.get("site_id", "unknown")
+    device_type = entry.data.get("device_type", "voice_assistant")
 
-    # Create the connection button entity
-    ssh = HiveMindSSHSwitch(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
-    mute = HiveMindVolumeMuteSwitch(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
-    mic_mute = HiveMindMicMuteSwitch(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
-    sleep = HiveMindSleepModeSwitch(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
+    phal_switches = [
+        HiveMindSSHSwitch(
+            bus=entry.hm_bus,
+            name=name,
+            site_id=site_id
+        )
+    ]
+    voice_switches = [
+        HiveMindMicMuteSwitch(
+            bus=entry.hm_bus,
+            name=name,
+            site_id=site_id
+        ),
+        HiveMindSleepModeSwitch(
+            bus=entry.hm_bus,
+            name=name,
+            site_id=site_id
+        )
+    ]
+    audio_switches = [
+        HiveMindVolumeMuteSwitch(
+            bus=entry.hm_bus,
+            name=name,
+            site_id=site_id
+        )
+    ]
+
+
+    switches = phal_switches
+    if device_type in ["voice_assistant", "media_player"]:
+        switches += audio_switches
+        if device_type == "voice_assistant":
+            switches += voice_switches
+
 
     # Add it to Home Assistant
-    async_add_entities([ssh, mute, mic_mute, sleep])
+    async_add_entities(switches)

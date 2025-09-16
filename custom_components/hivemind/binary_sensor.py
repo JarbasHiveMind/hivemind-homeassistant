@@ -248,6 +248,7 @@ async def async_setup_entry(
     # Get config values
     name = entry.data.get("name", "unnamed device")
     site_id = entry.data.get("site_id", "unknown")
+    device_type = entry.data.get("device_type", "voice_assistant")
 
     # Create the connection sensor entity
     connection_sensor = HiveMindConnectionSensor(
@@ -255,13 +256,24 @@ async def async_setup_entry(
         name=name,
         site_id=site_id
     )
-    spk = HiveMindSpeakingSensor(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
-    sensors = [connection_sensor, spk]
-    for proc in ["skills", "audio", "voice", "PHAL", "gui_service"]:
+
+    sensors = [connection_sensor]
+    services = ["PHAL"]
+
+    if device_type in ["voice_assistant", "media_player"]:
+        services += ["audio"]
+
+        spk = HiveMindSpeakingSensor(
+            bus=entry.hm_bus,
+            name=name,
+            site_id=site_id
+        )
+        sensors.append(spk)
+
+    if device_type == "voice_assistant":
+        services += ["skills", "voice", "gui_service"]
+
+    for proc in services:
         alive_sensor = HiveMindAliveSensor(
             bus=entry.hm_bus,
             name=name,
