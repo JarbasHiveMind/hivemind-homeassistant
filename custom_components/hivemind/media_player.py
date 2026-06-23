@@ -14,7 +14,6 @@ from homeassistant.components.media_player.const import (
     MediaType, MediaPlayerEntityFeature, RepeatMode, MediaPlayerState, MediaClass
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_IDLE, STATE_PLAYING, STATE_PAUSED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from ovos_bus_client.message import Message
@@ -75,7 +74,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         self.bus = bus
         self.legacy_audioservice = legacy_audio
 
-        self._state = MediaPlayerState.ON
+        self._state = MediaPlayerState.IDLE
         self._volume_level = 0.5
         self._is_muted = False
         self._is_shuffle = False
@@ -98,14 +97,14 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
 
     def handle_ocp_media_state(self, message: Message):
         _LOGGER.info(f"media state: {message.data}")
-        state = message.data["state"]
+        state = message.data.get("state")
         if state == MediaState.END_OF_MEDIA:
             self._state = MediaPlayerState.IDLE
             self.schedule_update_ha_state()
 
     def handle_ocp_player_state(self, message: Message):
         _LOGGER.info(f"player state: {message.data}")
-        state = message.data["state"]
+        state = message.data.get("state")
         if state == PlayerState.PAUSED:
             self._state = MediaPlayerState.PAUSED
         elif state == PlayerState.PLAYING:
@@ -116,37 +115,37 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
 
     def handle_volume_update(self, message: Message):
         _LOGGER.info(f"volume state: {message.data}")
-        self._volume_level = message.data["percent"]
-        self._is_muted = message.data["muted"]
+        self._volume_level = message.data.get("percent", self._volume_level)
+        self._is_muted = message.data.get("muted", self._is_muted)
         self.schedule_update_ha_state()
 
     def handle_track_info(self, message: Message):
         _LOGGER.info(f"track info: {message.data}")
         self._track_title = message.data.get("title") or message.data.get("track")
         self._track_artist = message.data.get("artist")
-        self._track_artist = message.data.get("album")
+        self._track_album = message.data.get("album")
         self._image = message.data.get("image")
         self._uri = message.data.get("uri")
         self.schedule_update_ha_state()
 
     def handle_track_len(self, message: Message):
         _LOGGER.info(f"track info: {message.data}")
-        self._track_len = message.data["length"]
+        self._track_len = message.data.get("length", self._track_len)
         self.schedule_update_ha_state()
 
     def handle_track_pos(self, message: Message):
         _LOGGER.info(f"track info: {message.data}")
-        self._playback_pos = message.data["position"]
+        self._playback_pos = message.data.get("position", self._playback_pos)
         if "length" in message.data:
             self._track_len = message.data["length"]
         self.schedule_update_ha_state()
 
     def handle_status(self, message: Message):
         _LOGGER.info(f"OCP status: {message.data}")
-        player = message.data["state"]
-        media = message.data["media_state"]
-        repeat = message.data["repeat"]
-        self._is_shuffle = message.data["shuffle"]
+        player = message.data.get("state")
+        media = message.data.get("media_state")
+        repeat = message.data.get("repeat")
+        self._is_shuffle = message.data.get("shuffle", self._is_shuffle)
 
         if repeat == LoopState.REPEAT:
             self._repeat = RepeatMode.ALL
@@ -400,7 +399,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
 
     async def async_media_play(self):
         """Send play command."""
-        self._state = STATE_PLAYING
+        self._state = MediaPlayerState.PLAYING
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.resume')
         else:
@@ -410,7 +409,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         self.async_write_ha_state()
 
     async def async_media_pause(self):
-        self._state = STATE_PAUSED
+        self._state = MediaPlayerState.PAUSED
         _LOGGER.info(f"pause")
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.pause')
@@ -421,7 +420,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         self.async_write_ha_state()
 
     async def async_media_stop(self):
-        self._state = STATE_IDLE
+        self._state = MediaPlayerState.IDLE
         _LOGGER.info(f"stop")
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.stop')
