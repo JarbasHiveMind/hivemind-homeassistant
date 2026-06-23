@@ -4,10 +4,9 @@
   "codeowners": ["@JarbasAI"],
   "config_flow": true,
   "documentation": "https://github.com/JarbasHiveMind/hivemind-homeassistant",
-  "issue_tracker": "https://github.com/JarbasHiveMind/hivemind-homeassistant/issues",
   "integration_type": "device",
   "iot_class": "assumed_state",
-  "platforms": ["notify", "binary_sensor", "sensor", "button", "media_player", "switch", "select"],
+  "issue_tracker": "https://github.com/JarbasHiveMind/hivemind-homeassistant/issues",
   "loggers": ["hivemind_bus_client"],
   "requirements": [
     "hivemind_bus_client>=0.4.3"
