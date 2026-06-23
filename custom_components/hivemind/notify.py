@@ -58,10 +58,10 @@ class HiveMindNotifier(NotifyEntity):
     def speak(self, utterance: str):
         payload = HiveMessage(HiveMessageType.BUS, Message("speak", {"utterance": utterance}))
         try:
-            _LOGGER.log(level=3, msg=f"HiveMind Message: {payload.serialize()}")
+            _LOGGER.debug("HiveMind Message: %s", payload.serialize())
             self.bus.emit(payload)
-        except:
-            _LOGGER.log(level=1, msg="Error from HiveMind messagebus", exc_info=True)
+        except Exception:
+            _LOGGER.error("Error from HiveMind messagebus", exc_info=True)
 
     def send_message(self, message: str, title: str | None = None) -> None:
         """Send a message."""
