@@ -1,59 +1,34 @@
-"""HiveMind notification platform."""
+"""HiveMind notify entity: speak text on the device via TTS."""
+
 import logging
 
-from hivemind_bus_client.client import HiveMessageBusClient
-from hivemind_bus_client.message import HiveMessageType, HiveMessage
 from homeassistant.components.notify import NotifyEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
+from hivemind_bus_client.message import HiveMessage, HiveMessageType
 from ovos_bus_client import Message
 
-from .const import DOMAIN
+from .entity import HiveMindEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class HiveMindNotifier(NotifyEntity):
+class HiveMindNotifier(HiveMindEntity, NotifyEntity):
+    """Speak a notification on the HiveMind device."""
+
     _attr_has_entity_name = True
-
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, **kwargs) -> None:
-        """Initialize the service."""
-        self._name = name.replace(" ", "-")
-        self.site_id = site_id
-        self.bus = bus
-
-    @property
-    def available(self) -> bool:
-        return self.bus.handshake_event.is_set()
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return DeviceInfo(
-            identifiers={
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, f"{self._name}-{self.site_id}-{self.bus._host}")
-            },
-            name=self._name,
-            manufacturer="JarbasAI",
-            model="HiveMindBus"
-        )
-
-    @property
-    def icon(self) -> str | None:
-        """Icon of the entity."""
-        return "mdi:robot-outline"
 
     @property
     def name(self):
-        """Name of the entity."""
         return f"Speak ({self._name})"
 
     @property
     def unique_id(self) -> str | None:
-        """Return a unique ID for this entity."""
-        return f"hm-notify-{self._name}-{self.site_id}".replace(" ", "")
+        return self._uid("notify")
+
+    @property
+    def icon(self) -> str | None:
+        return "mdi:robot-outline"
 
     def speak(self, utterance: str):
         payload = HiveMessage(HiveMessageType.BUS, Message("speak", {"utterance": utterance}))
@@ -71,21 +46,13 @@ class HiveMindNotifier(NotifyEntity):
 
 
 async def async_setup_entry(
-        hass: HomeAssistant,
-        entry: ConfigEntry,
-        async_add_entities
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities,
 ):
-    """Set up notify service from a config entry."""
-    # Get config values
+    """Set up the notify entity from a config entry."""
     name = entry.data.get("name", "unnamed device")
     site_id = entry.data.get("site_id", "unknown")
-
-    # Create the notifier entity
-    notifier = HiveMindNotifier(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
+    async_add_entities(
+        [HiveMindNotifier(bus=entry.hm_bus, name=name, site_id=site_id)]
     )
-
-    # Add it to Home Assistant
-    async_add_entities([notifier])
