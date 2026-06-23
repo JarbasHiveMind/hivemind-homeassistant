@@ -1,0 +1,21 @@
+name: E2E
+
+on:
+  push:
+    branches: [dev, master]
+  pull_request:
+    branches: [dev, master]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # --pre: the hivemind-core stack hivescope pulls is still prerelease
+      - run: pip install --pre -r requirements_test_e2e.txt
+      # Tier 2: the integration against a REAL loopback hivemind-core hub
+      - run: pytest tests/e2e -o norecursedirs= -q

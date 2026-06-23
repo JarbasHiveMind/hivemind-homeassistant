@@ -1,0 +1,5 @@
+# Tier 2 (real-hub) e2e dependencies. Install with --pre: the hivemind-core
+# stack hivescope pulls in is still prerelease (2.x migration). hivescope is
+# pinned to the loopback-whitelist branch until that fix is released.
+-r requirements_test.txt
+hivescope @ git+https://github.com/JarbasHiveMind/hivescope.git@fix/loopback-whitelist-only-connection
