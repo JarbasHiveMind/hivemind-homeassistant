@@ -1,9 +1,10 @@
 # HiveMind Integration for Home Assistant
 
-A **manual-install** Home Assistant custom integration (`domain: hivemind`) that
-connects Home Assistant to an [OpenVoiceOS](https://openvoiceos.com) instance over
-the [HiveMind](https://github.com/JarbasHiveMind/HiveMind-core) protocol and
-exposes OVOS as Home Assistant entities.
+A Home Assistant custom integration (`domain: hivemind`) that connects Home
+Assistant to an [OpenVoiceOS](https://openvoiceos.com) instance over the
+[HiveMind](https://github.com/JarbasHiveMind/HiveMind-core) protocol and exposes
+OVOS as Home Assistant entities. Installable through HACS (as a custom repository)
+or by hand.
 
 It does more than send voice commands: it controls the OVOS device at a system
 level — audio playback, volume, microphone, sleep/wake, and system power — by
@@ -26,6 +27,19 @@ must have **admin** privileges and the message-type allowlist described under
 - Home Assistant with access to its `config/custom_components/` directory.
 - The integration declares the runtime requirement `hivemind_bus_client>=0.4.3`
   (pulled in by Home Assistant on first load).
+
+## Installation
+
+**HACS (custom repository):** add `https://github.com/JarbasHiveMind/hivemind-homeassistant`
+as a custom repository (category *Integration*), install **HiveMind**, then restart
+Home Assistant.
+
+**Manual:** copy `custom_components/hivemind` into your Home Assistant
+`config/custom_components/` directory and restart.
+
+Then add it from **Settings → Devices & Services → Add Integration → HiveMind**. The
+config flow validates the hub connection before saving (clear `cannot connect` /
+`invalid auth` errors instead of a silent failure).
 
 ## Configuration fields
 

@@ -12,6 +12,15 @@ messages, and the sensors subscribe to status messages. A read-only or
 utterance-only client cannot drive these, so the client key must be admin with the
 message types allowlisted.
 
+Concretely, the integration pins the `default` OVOS session so the hub does not
+assign a random session per reconnection — and `hivemind-core` only permits the
+`default` session for admin clients. A non-admin client is rejected from that
+session, so provision the client with `--admin`:
+
+```bash
+hivemind-core add-client --admin
+```
+
 ## The allowlist
 
 The full, exact list of required message types — grouped by OVOS service
