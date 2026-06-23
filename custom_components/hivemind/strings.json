@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to a HiveMind hub",
+        "description": "Enter the credentials issued by `hivemind-core add-client` on your hub.",
+        "data": {
+          "device_type": "Device type",
+          "name": "Name",
+          "host": "Host",
+          "access_key": "Access key",
+          "password": "Password",
+          "port": "Port",
+          "legacy_audio": "Use the legacy audio service instead of OCP",
+          "site_id": "Site ID",
+          "allow_self_signed": "Allow self-signed certificates"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the hub. Check the host, port, and that hivemind-core is running.",
+      "invalid_auth": "The hub rejected these credentials. Check the access key and password from `hivemind-core list-clients`."
+    },
+    "abort": {
+      "already_configured": "This hub is already configured."
+    }
+  }
+}
