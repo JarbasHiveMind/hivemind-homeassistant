@@ -1,21 +1,18 @@
 
 import logging
-from typing import Any, Dict
+from typing import Any
 from hivemind_bus_client.client import HiveMessageBusClient
 from hivemind_bus_client.message import HiveMessageType, HiveMessage
-from ovos_utils.log import LOG
 from homeassistant.components.media_player import (
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
-    MediaPlayerDeviceClass,
     MediaPlayerEnqueue
 )
 from homeassistant.components.media_player.const import (
-    MediaType, MediaPlayerEntityFeature, RepeatMode, MediaPlayerState, MediaClass
+    MediaType, RepeatMode, MediaPlayerState
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from ovos_bus_client.message import Message
 from homeassistant.components import media_source
 from homeassistant.components.media_player.browse_media import (
@@ -23,10 +20,10 @@ from homeassistant.components.media_player.browse_media import (
 )
 
 from ovos_utils.ocp import (MediaType as OCPMediaType, MediaEntry, TrackState,
-                            PlaybackType, PlaybackMode, PlayerState, MediaState, LoopState)
+                            PlaybackType, PlayerState, MediaState, LoopState)
 
 
-from .const import DOMAIN
+from .entity import HiveMindEntity
 
 mapping = {
     MediaType.MUSIC.value: OCPMediaType.MUSIC,
@@ -66,12 +63,10 @@ SUPPORT_HIVEMIND = (
 )
 
 
-class HiveMindMediaPlayer(MediaPlayerEntity):
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, legacy_audio:bool=False,**kwargs) -> None:
+class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
+    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, legacy_audio: bool = False, **kwargs) -> None:
         """Initialize the service."""
-        self._name = name.replace(" ", "-")
-        self.site_id = site_id
-        self.bus = bus
+        super().__init__(bus, site_id, name, **kwargs)
         self.legacy_audioservice = legacy_audio
 
         self._state = MediaPlayerState.IDLE
@@ -89,8 +84,6 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         self._uri = ""
 
         self._media_content_type = MediaType.MUSIC
-
-        self.register_events()
 
     def handle_ocp_track_state(self, message: Message):
         _LOGGER.info(f"track data: {message.data}")
@@ -167,26 +160,16 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
 
         self.schedule_update_ha_state()
 
-    def register_events(self):
-        self.bus.on_mycroft("ovos.common_play.track_info.response",
-                            self.handle_track_info)
-        self.bus.on_mycroft("ovos.common_play.get_track_length.response",
-                            self.handle_track_len)
-        self.bus.on_mycroft("ovos.common_play.get_track_position.response",
-                            self.handle_track_pos)
-        self.bus.on_mycroft("mycroft.volume.get.response",
-                            self.handle_volume_update)
-        self.bus.on_mycroft("ovos.common_play.playback_time",
-                            self.handle_track_pos)
-
-        self.bus.on_mycroft("ovos.common_play.track.state",
-                            self.handle_ocp_track_state)
-        self.bus.on_mycroft("ovos.common_play.player.state",
-                            self.handle_ocp_player_state)
-        self.bus.on_mycroft("ovos.common_play.media.state",
-                            self.handle_ocp_media_state)
-        self.bus.on_mycroft("ovos.common_play.player.status.response",
-                            self.handle_status)
+    def _subscribe(self):
+        self._register("ovos.common_play.track_info.response", self.handle_track_info)
+        self._register("ovos.common_play.get_track_length.response", self.handle_track_len)
+        self._register("ovos.common_play.get_track_position.response", self.handle_track_pos)
+        self._register("mycroft.volume.get.response", self.handle_volume_update)
+        self._register("ovos.common_play.playback_time", self.handle_track_pos)
+        self._register("ovos.common_play.track.state", self.handle_ocp_track_state)
+        self._register("ovos.common_play.player.state", self.handle_ocp_player_state)
+        self._register("ovos.common_play.media.state", self.handle_ocp_media_state)
+        self._register("ovos.common_play.player.status.response", self.handle_status)
 
     async def async_update(self):
         if self.available:
@@ -197,23 +180,6 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
             self.send_to_ovos(Message("ovos.common_play.player.status"))
 
     @property
-    def available(self) -> bool:
-        return self.bus.handshake_event.is_set()
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return DeviceInfo(
-            identifiers={
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, f"{self._name}-{self.site_id}-{self.bus._host}")
-            },
-            name=self._name,
-            manufacturer="JarbasAI",
-            model="HiveMindBus"
-        )
-
-    @property
     def name(self):
         """Name of the entity."""
         return f"OCP Player ({self._name})"
@@ -221,7 +187,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
     @property
     def unique_id(self) -> str | None:
         """Return a unique ID for this entity."""
-        return f"hm-ocp-{self._name}-{self.site_id}".replace(" ", "")
+        return self._uid("ocp")
 
     def send_to_ovos(self, message: Message):
         payload = HiveMessage(HiveMessageType.BUS, message)
@@ -404,13 +370,13 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
             message = Message('mycroft.audio.service.resume')
         else:
             message = Message('ovos.common_play.resume')
-        _LOGGER.info(f"play")
+        _LOGGER.info("play")
         self.send_to_ovos(message)
         self.async_write_ha_state()
 
     async def async_media_pause(self):
         self._state = MediaPlayerState.PAUSED
-        _LOGGER.info(f"pause")
+        _LOGGER.info("pause")
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.pause')
         else:
@@ -421,7 +387,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
 
     async def async_media_stop(self):
         self._state = MediaPlayerState.IDLE
-        _LOGGER.info(f"stop")
+        _LOGGER.info("stop")
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.stop')
         else:
@@ -510,7 +476,7 @@ class HiveMindMediaPlayer(MediaPlayerEntity):
         """Clear players playlist."""
         message = Message('ovos.common_play.playlist.clear')
         self.send_to_ovos(message)
-        _LOGGER.info(f"clear playlist")
+        _LOGGER.info("clear playlist")
         self.async_write_ha_state()
 
     async def async_set_shuffle(self, shuffle: bool) -> None:

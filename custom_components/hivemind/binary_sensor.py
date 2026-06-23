@@ -1,77 +1,68 @@
-"""HiveMind notification platform."""
+"""HiveMind binary sensors: connection, speaking, and per-service alive/ready."""
+
 import logging
 
-from ovos_bus_client.message import Message
-from hivemind_bus_client.client import HiveMessageBusClient
-from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
+from ovos_bus_client.message import Message
 
-from .const import DOMAIN
+from .entity import HiveMindEntity
 
 _LOGGER = logging.getLogger(__name__)
 
+# OVOS process name -> friendly label shown in the entity name
+_PROC_LABELS = {
+    "skills": "ovos-core",
+    "audio": "ovos-audio",
+    "voice": "ovos-listener",
+    "gui_service": "ovos-gui",
+    "PHAL": "ovos-PHAL",
+}
 
-class HiveMindConnectionSensor(BinarySensorEntity):
-    """Binary Sensor for HiveMind connection status."""
 
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, **kwargs) -> None:
-        """Initialize the service."""
-        self._name = name.replace(" ", "-")
-        self.site_id = site_id
-        self.bus = bus
+class HiveMindConnectionSensor(HiveMindEntity, BinarySensorEntity):
+    """Whether the satellite is connected to the hub (handshake complete)."""
+
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+
+    @property
+    def available(self) -> bool:
+        # Always available: this sensor *reports* the connection, so it must
+        # stay visible (on/off) rather than going unavailable when disconnected.
+        return True
 
     @property
     def name(self):
-        """Name of the entity."""
         return f"Connection Status ({self._name})"
 
     @property
     def unique_id(self) -> str | None:
-        """Return a unique ID for this entity."""
-        return f"hm-connection-status-{self._name}-{self.site_id}".replace(" ", "")
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return DeviceInfo(
-            identifiers={
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, f"{self._name}-{self.site_id}-{self.bus._host}")
-            },
-            name=self._name,
-            manufacturer="JarbasAI",
-            model="HiveMindBus"
-        )
+        return self._uid("connection-status")
 
     @property
     def is_on(self) -> bool:
-        """Return the status of the binary sensor (True if connected)."""
         return self.bus.handshake_event.is_set()
 
     @property
-    def device_class(self) -> BinarySensorDeviceClass:
-        return BinarySensorDeviceClass.CONNECTIVITY
-
-    @property
     def icon(self) -> str | None:
-        """Return the icon for the binary sensor."""
-        if self.is_on:
-            return "mdi:lan-connect"
-        return "mdi:lan-disconnect"
+        return "mdi:lan-connect" if self.is_on else "mdi:lan-disconnect"
 
 
-class HiveMindSpeakingSensor(BinarySensorEntity):
-    """Binary Sensor for HiveMind connection status."""
+class HiveMindSpeakingSensor(HiveMindEntity, BinarySensorEntity):
+    """Whether the device is currently speaking (TTS playing)."""
 
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, **kwargs) -> None:
-        """Initialize the service."""
-        self._name = name.replace(" ", "-")
-        self.site_id = site_id
-        self.bus = bus
+    _attr_device_class = BinarySensorDeviceClass.RUNNING
+
+    def __init__(self, bus, site_id: str, name: str, **kwargs) -> None:
+        super().__init__(bus, site_id, name, **kwargs)
         self._is_speaking = False
-        self.bus.on_mycroft("mycroft.audio.is_speaking", self.handle_update)
+
+    def _subscribe(self) -> None:
+        self._register("mycroft.audio.is_speaking", self.handle_update)
 
     def handle_update(self, message: Message):
         self._is_speaking = message.data.get("speaking", False)
@@ -83,211 +74,107 @@ class HiveMindSpeakingSensor(BinarySensorEntity):
 
     @property
     def name(self):
-        """Name of the entity."""
         return f"Speaking ({self._name})"
 
     @property
     def unique_id(self) -> str | None:
-        """Return a unique ID for this entity."""
-        return f"hm-speaking-status-{self._name}-{self.site_id}".replace(" ", "")
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return DeviceInfo(
-            identifiers={
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, f"{self._name}-{self.site_id}-{self.bus._host}")
-            },
-            name=self._name,
-            manufacturer="JarbasAI",
-            model="HiveMindBus"
-        )
+        return self._uid("speaking-status")
 
     @property
     def is_on(self) -> bool:
-        """Return the status of the binary sensor (True if TTS executing)."""
         return self._is_speaking
 
     @property
-    def device_class(self) -> BinarySensorDeviceClass:
-        return BinarySensorDeviceClass.RUNNING
-
-    @property
     def icon(self) -> str | None:
-        """Return the icon for the binary sensor."""
-        if self.is_on:
-            return "mdi:account-voice"
-        return "mdi:account-voice-off"
+        return "mdi:account-voice" if self.is_on else "mdi:account-voice-off"
 
 
-class HiveMindAliveSensor(HiveMindConnectionSensor):
-    """Binary Sensor for process ALIVE status."""
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, proc_name: str, **kwargs) -> None:
+class _HiveMindServiceSensor(HiveMindEntity, BinarySensorEntity):
+    """Base for the per-OVOS-service alive/ready probes."""
+
+    _attr_device_class = BinarySensorDeviceClass.RUNNING
+    _kind = ""  # "alive" or "ready"
+    _request = ""  # message emitted to poll status
+    _response = ""  # message listened to for the answer
+
+    def __init__(self, bus, site_id: str, name: str, proc_name: str, **kwargs) -> None:
         super().__init__(bus, site_id, name, **kwargs)
         self._proc_name = proc_name
-        self._alive = False
-        self.bus.on_mycroft(f"mycroft.{self._proc_name}.is_alive.response", self.handle_update)
+        self._on = False
+
+    def _subscribe(self) -> None:
+        self._register(f"mycroft.{self._proc_name}.{self._response}", self.handle_update)
 
     def handle_update(self, message: Message):
-        self._alive = message.data.get("status", False)
+        self._on = message.data.get("status", False)
         self.schedule_update_ha_state()
 
     async def async_update(self):
         if self.available:
-            self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.is_alive"))
+            self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.{self._request}"))
 
     @property
     def name(self):
-        """Name of the entity."""
-        if self._proc_name == "skills":
-            n = "ovos-core"
-        elif self._proc_name == "audio":
-            n = "ovos-audio"
-        elif self._proc_name == "voice":
-            n = "ovos-listener"
-        elif self._proc_name == "gui_service":
-            n = "ovos-gui"
-        elif self._proc_name == "PHAL":
-            n = "ovos-PHAL"
-        else:
-            n = self._proc_name
-        return f"{n} Alive ({self._name})"
+        label = _PROC_LABELS.get(self._proc_name, self._proc_name)
+        return f"{label} {self._kind.capitalize()} ({self._name})"
 
     @property
     def unique_id(self) -> str | None:
-        """Return a unique ID for this entity."""
-        return f"hm-alive-sensor-{self._name}-{self._proc_name}-{self.site_id}".replace(" ", "")
-
-    @property
-    def available(self) -> bool:
-        return self.bus.handshake_event.is_set()
+        return self._uid(f"{self._kind}-sensor-{self._proc_name}")
 
     @property
     def is_on(self) -> bool:
-        """Return the status of the binary sensor (True if service alive)."""
-        return self._alive
-
-    @property
-    def device_class(self) -> BinarySensorDeviceClass:
-        return BinarySensorDeviceClass.RUNNING
+        return self._on
 
     @property
     def icon(self) -> str | None:
-        """Return the icon for the binary sensor."""
-        if self.is_on:
-            return "mdi:check-circle"
-        return "mdi:alert-circle"
+        return "mdi:check-circle" if self.is_on else "mdi:alert-circle"
 
 
-class HiveMindReadySensor(HiveMindConnectionSensor):
-    """Binary Sensor for process READY status."""
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, proc_name: str, **kwargs) -> None:
-        super().__init__(bus, site_id, name, **kwargs)
-        self._proc_name = proc_name
-        self._ready = False
-        self.bus.on_mycroft(f"mycroft.{self._proc_name}.is_ready.response", self.handle_update)
+class HiveMindAliveSensor(_HiveMindServiceSensor):
+    """Whether an OVOS service process is alive."""
 
-    def handle_update(self, message: Message):
-        self._ready = message.data.get("status", False)
-        self.schedule_update_ha_state()
+    _kind = "alive"
+    _request = "is_alive"
+    _response = "is_alive.response"
 
-    async def async_update(self):
-        if self.available:
-            self.bus.emit_mycroft(Message(f"mycroft.{self._proc_name}.is_ready"))
 
-    @property
-    def name(self):
-        """Name of the entity."""
-        if self._proc_name == "skills":
-            n = "ovos-core"
-        elif self._proc_name == "audio":
-            n = "ovos-audio"
-        elif self._proc_name == "voice":
-            n = "ovos-listener"
-        elif self._proc_name == "gui_service":
-            n = "ovos-gui"
-        elif self._proc_name == "PHAL":
-            n = "ovos-PHAL"
-        else:
-            n = self._proc_name
-        return f"{n} Ready ({self._name})"
+class HiveMindReadySensor(_HiveMindServiceSensor):
+    """Whether an OVOS service process is ready."""
 
-    @property
-    def unique_id(self) -> str | None:
-        """Return a unique ID for this entity."""
-        return f"hm-ready-sensor-{self._name}-{self._proc_name}-{self.site_id}".replace(" ", "")
-
-    @property
-    def available(self) -> bool:
-        return self.bus.handshake_event.is_set()
-
-    @property
-    def is_on(self) -> bool:
-        """Return the status of the binary sensor (True if service ready)."""
-        return self._ready
-
-    @property
-    def device_class(self) -> BinarySensorDeviceClass:
-        return BinarySensorDeviceClass.RUNNING
-
-    @property
-    def icon(self) -> str | None:
-        """Return the icon for the binary sensor."""
-        if self.is_on:
-            return "mdi:check-circle"
-        return "mdi:alert-circle"
+    _kind = "ready"
+    _request = "is_ready"
+    _response = "is_ready.response"
 
 
 async def async_setup_entry(
-        hass: HomeAssistant,
-        entry: ConfigEntry,
-        async_add_entities
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities,
 ):
-    """Set up notify service from a config entry."""
-    # Get config values
+    """Set up the binary sensors from a config entry."""
     name = entry.data.get("name", "unnamed device")
     site_id = entry.data.get("site_id", "unknown")
     device_type = entry.data.get("device_type", "voice_assistant")
 
-    # Create the connection sensor entity
-    connection_sensor = HiveMindConnectionSensor(
-        bus=entry.hm_bus,
-        name=name,
-        site_id=site_id
-    )
-
-    sensors = [connection_sensor]
+    sensors = [HiveMindConnectionSensor(bus=entry.hm_bus, name=name, site_id=site_id)]
     services = ["PHAL"]
 
     if device_type in ["voice_assistant", "media_player"]:
         services += ["audio"]
-
-        spk = HiveMindSpeakingSensor(
-            bus=entry.hm_bus,
-            name=name,
-            site_id=site_id
+        sensors.append(
+            HiveMindSpeakingSensor(bus=entry.hm_bus, name=name, site_id=site_id)
         )
-        sensors.append(spk)
 
     if device_type == "voice_assistant":
         services += ["skills", "voice", "gui_service"]
 
     for proc in services:
-        alive_sensor = HiveMindAliveSensor(
-            bus=entry.hm_bus,
-            name=name,
-            proc_name=proc,
-            site_id=site_id
+        sensors.append(
+            HiveMindAliveSensor(bus=entry.hm_bus, name=name, proc_name=proc, site_id=site_id)
         )
-        sensors.append(alive_sensor)
-        ready_sensor = HiveMindReadySensor(
-            bus=entry.hm_bus,
-            name=name,
-            proc_name=proc,
-            site_id=site_id
+        sensors.append(
+            HiveMindReadySensor(bus=entry.hm_bus, name=name, proc_name=proc, site_id=site_id)
         )
-        sensors.append(ready_sensor)
 
-    # Add it to Home Assistant
     async_add_entities(sensors)

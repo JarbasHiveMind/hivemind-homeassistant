@@ -1,65 +1,42 @@
-"""HiveMind notification platform."""
+"""HiveMind switches: SSH, volume mute, microphone mute, and sleep mode."""
+
 import logging
-from ovos_bus_client.message import Message
-from hivemind_bus_client.client import HiveMessageBusClient
-from homeassistant.components.switch import SwitchEntity, SwitchDeviceClass
+
+from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
+from ovos_bus_client.message import Message
 
-from .const import DOMAIN
+from .entity import HiveMindEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class HiveMindSSHSwitch(SwitchEntity):
-    """control SSH via ovos-PHAL-plugin-system"""
+class HiveMindSSHSwitch(HiveMindEntity, SwitchEntity):
+    """Control SSH via ovos-PHAL-plugin-system."""
 
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, **kwargs) -> None:
-        """Initialize the service."""
-        self._name = name.replace(" ", "-")
-        self.site_id = site_id
-        self.bus = bus
+    _attr_device_class = SwitchDeviceClass.SWITCH
+
+    def __init__(self, bus, site_id: str, name: str, **kwargs) -> None:
+        super().__init__(bus, site_id, name, **kwargs)
         self._enabled = False
 
-        self.bus.on_mycroft("system.ssh.status.response", self.handle_ssh_status)
-        self.bus.on_mycroft("system.ssh.enabled", self.handle_ssh_enabled)
-        self.bus.on_mycroft("system.ssh.disabled", self.handle_ssh_disabled)
-
-    @property
-    def available(self) -> bool:
-        return self.bus.handshake_event.is_set()
-
-    @property
-    def device_class(self) -> SwitchDeviceClass:
-        return SwitchDeviceClass.SWITCH
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return DeviceInfo(
-            identifiers={
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, f"{self._name}-{self.site_id}-{self.bus._host}")
-            },
-            name=self._name,
-            manufacturer="JarbasAI",
-            model="HiveMindBus"
-        )
+    def _subscribe(self) -> None:
+        self._register("system.ssh.status.response", self.handle_ssh_status)
+        self._register("system.ssh.enabled", self.handle_ssh_enabled)
+        self._register("system.ssh.disabled", self.handle_ssh_disabled)
 
     @property
     def name(self):
-        """Name of the entity."""
         return f"SSH Service ({self._name})"
 
     @property
     def unique_id(self) -> str | None:
-        """Return a unique ID for this entity."""
-        return f"hm-ssh-switch-{self._name}-{self.site_id}".replace(" ", "")
+        return self._uid("ssh-switch")
 
     async def async_update(self):
         if self.available:
-            self.bus.emit_mycroft(Message(f"system.ssh.status"))
+            self.bus.emit_mycroft(Message("system.ssh.status"))
 
     def handle_ssh_status(self, message: Message):
         self._enabled = message.data.get("enabled", False)
@@ -75,15 +52,12 @@ class HiveMindSSHSwitch(SwitchEntity):
 
     @property
     def is_on(self) -> bool:
-        """Return the status of the switch"""
         return self._enabled
 
     async def async_turn_on(self, **kwargs):
-        """Turn the entity on."""
         self.bus.emit_mycroft(Message("system.ssh.enable"))
 
     async def async_turn_off(self, **kwargs):
-        """Turn the entity off."""
         self.bus.emit_mycroft(Message("system.ssh.disable"))
 
     @property
@@ -91,54 +65,31 @@ class HiveMindSSHSwitch(SwitchEntity):
         return "mdi:remote-desktop"
 
 
-class HiveMindVolumeMuteSwitch(SwitchEntity):
-    """control volume mute via ovos-PHAL-plugin-alsa"""
+class HiveMindVolumeMuteSwitch(HiveMindEntity, SwitchEntity):
+    """Control volume mute via ovos-PHAL-plugin-alsa."""
 
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, **kwargs) -> None:
-        """Initialize the service."""
-        self._name = name.replace(" ", "-")
-        self.site_id = site_id
-        self.bus = bus
+    _attr_device_class = SwitchDeviceClass.SWITCH
+
+    def __init__(self, bus, site_id: str, name: str, **kwargs) -> None:
+        super().__init__(bus, site_id, name, **kwargs)
         self._muted = False
 
-        self.bus.on_mycroft("mycroft.volume.get.response", self.handle_mute_status)
-        self.bus.on_mycroft("mycroft.volume.mute", self.handle_mute_enabled)
-        self.bus.on_mycroft("mycroft.volume.unmute", self.handle_mute_disabled)
-
-    @property
-    def available(self) -> bool:
-        return self.bus.handshake_event.is_set()
-
-    @property
-    def device_class(self) -> SwitchDeviceClass:
-        return SwitchDeviceClass.SWITCH
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return DeviceInfo(
-            identifiers={
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, f"{self._name}-{self.site_id}-{self.bus._host}")
-            },
-            name=self._name,
-            manufacturer="JarbasAI",
-            model="HiveMindBus"
-        )
+    def _subscribe(self) -> None:
+        self._register("mycroft.volume.get.response", self.handle_mute_status)
+        self._register("mycroft.volume.mute", self.handle_mute_enabled)
+        self._register("mycroft.volume.unmute", self.handle_mute_disabled)
 
     @property
     def name(self):
-        """Name of the entity."""
         return f"Volume Mute ({self._name})"
 
     @property
     def unique_id(self) -> str | None:
-        """Return a unique ID for this entity."""
-        return f"hm-volume-mute-switch-{self._name}-{self.site_id}".replace(" ", "")
+        return self._uid("volume-mute-switch")
 
     async def async_update(self):
         if self.available:
-            self.bus.emit_mycroft(Message(f"mycroft.volume.get"))
+            self.bus.emit_mycroft(Message("mycroft.volume.get"))
 
     def handle_mute_status(self, message: Message):
         self._muted = message.data.get("muted", False)
@@ -154,70 +105,42 @@ class HiveMindVolumeMuteSwitch(SwitchEntity):
 
     @property
     def is_on(self) -> bool:
-        """Return the status of the switch"""
         return self._muted
 
     async def async_turn_on(self, **kwargs):
-        """Turn the entity on."""
         self.bus.emit_mycroft(Message("mycroft.volume.mute"))
 
     async def async_turn_off(self, **kwargs):
-        """Turn the entity off."""
         self.bus.emit_mycroft(Message("mycroft.volume.unmute"))
 
     @property
     def icon(self) -> str | None:
-        if self._muted:
-            return "mdi:volume-mute"
-        return "mdi:volume-high"
+        return "mdi:volume-mute" if self._muted else "mdi:volume-high"
 
 
-class HiveMindMicMuteSwitch(SwitchEntity):
-    """control microphone mute via ovos-dinkum-listener"""
+class HiveMindMicMuteSwitch(HiveMindEntity, SwitchEntity):
+    """Control microphone mute via ovos-dinkum-listener."""
 
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, **kwargs) -> None:
-        """Initialize the service."""
-        self._name = name.replace(" ", "-")
-        self.site_id = site_id
-        self.bus = bus
+    _attr_device_class = SwitchDeviceClass.SWITCH
+
+    def __init__(self, bus, site_id: str, name: str, **kwargs) -> None:
+        super().__init__(bus, site_id, name, **kwargs)
         self._muted = False
 
-        self.bus.on_mycroft("mycroft.mic.get_status.response", self.handle_mute_status)
-
-    @property
-    def available(self) -> bool:
-        return self.bus.handshake_event.is_set()
-
-    @property
-    def device_class(self) -> SwitchDeviceClass:
-        return SwitchDeviceClass.SWITCH
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return DeviceInfo(
-            identifiers={
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, f"{self._name}-{self.site_id}-{self.bus._host}")
-            },
-            name=self._name,
-            manufacturer="JarbasAI",
-            model="HiveMindBus"
-        )
+    def _subscribe(self) -> None:
+        self._register("mycroft.mic.get_status.response", self.handle_mute_status)
 
     @property
     def name(self):
-        """Name of the entity."""
         return f"Microphone Mute ({self._name})"
 
     @property
     def unique_id(self) -> str | None:
-        """Return a unique ID for this entity."""
-        return f"hm-mic-mute-switch-{self._name}-{self.site_id}".replace(" ", "")
+        return self._uid("mic-mute-switch")
 
     async def async_update(self):
         if self.available:
-            self.bus.emit_mycroft(Message(f"mycroft.mic.get_status"))
+            self.bus.emit_mycroft(Message("mycroft.mic.get_status"))
 
     def handle_mute_status(self, message: Message):
         self._muted = message.data.get("muted", False)
@@ -225,72 +148,44 @@ class HiveMindMicMuteSwitch(SwitchEntity):
 
     @property
     def is_on(self) -> bool:
-        """Return the status of the switch"""
         return self._muted
 
     async def async_turn_on(self, **kwargs):
-        """Turn the entity on."""
         self.bus.emit_mycroft(Message("mycroft.mic.mute"))
 
     async def async_turn_off(self, **kwargs):
-        """Turn the entity off."""
         self.bus.emit_mycroft(Message("mycroft.mic.unmute"))
 
     @property
     def icon(self) -> str | None:
-        if self._muted:
-            return "mdi:microphone-off"
-        return "mdi:microphone"
+        return "mdi:microphone-off" if self._muted else "mdi:microphone"
 
 
-class HiveMindSleepModeSwitch(SwitchEntity):
-    """control sleep mode via ovos-dinkum-listener"""
+class HiveMindSleepModeSwitch(HiveMindEntity, SwitchEntity):
+    """Control sleep mode via ovos-dinkum-listener."""
 
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, **kwargs) -> None:
-        """Initialize the service."""
-        self._name = name.replace(" ", "-")
-        self.site_id = site_id
-        self.bus = bus
+    _attr_device_class = SwitchDeviceClass.SWITCH
+
+    def __init__(self, bus, site_id: str, name: str, **kwargs) -> None:
+        super().__init__(bus, site_id, name, **kwargs)
         self._sleeping = False
 
-        self.bus.on_mycroft("recognizer_loop:state", self.handle_sleep_status)
-        self.bus.on_mycroft("recognizer_loop:sleep", self.handle_sleep_enabled)
-        self.bus.on_mycroft("recognizer_loop:awoken", self.handle_sleep_disabled)
-
-    @property
-    def available(self) -> bool:
-        return self.bus.handshake_event.is_set()
-
-    @property
-    def device_class(self) -> SwitchDeviceClass:
-        return SwitchDeviceClass.SWITCH
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return DeviceInfo(
-            identifiers={
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, f"{self._name}-{self.site_id}-{self.bus._host}")
-            },
-            name=self._name,
-            manufacturer="JarbasAI",
-            model="HiveMindBus"
-        )
+    def _subscribe(self) -> None:
+        self._register("recognizer_loop:state", self.handle_sleep_status)
+        self._register("recognizer_loop:sleep", self.handle_sleep_enabled)
+        self._register("recognizer_loop:awoken", self.handle_sleep_disabled)
 
     @property
     def name(self):
-        """Name of the entity."""
         return f"Sleep Mode ({self._name})"
 
     @property
     def unique_id(self) -> str | None:
-        """Return a unique ID for this entity."""
-        return f"hm-sleep-switch-{self._name}-{self.site_id}".replace(" ", "")
+        return self._uid("sleep-switch")
 
     async def async_update(self):
         if self.available:
-            self.bus.emit_mycroft(Message(f"recognizer_loop:state.get"))
+            self.bus.emit_mycroft(Message("recognizer_loop:state.get"))
 
     def handle_sleep_status(self, message: Message):
         self._sleeping = message.data.get("state", "wakeword") == "sleeping"
@@ -306,71 +201,41 @@ class HiveMindSleepModeSwitch(SwitchEntity):
 
     @property
     def is_on(self) -> bool:
-        """Return the status of the switch"""
         return self._sleeping
 
     async def async_turn_on(self, **kwargs):
-        """Turn the entity on."""
         self._sleeping = True
         self.bus.emit_mycroft(Message("recognizer_loop:sleep"))
 
     async def async_turn_off(self, **kwargs):
-        """Turn the entity off."""
         self._sleeping = False
         self.bus.emit_mycroft(Message("recognizer_loop:wake_up"))
 
     @property
     def icon(self) -> str | None:
-        if self._sleeping:
-            return "mdi:sleep"
-        return "mdi:sleep-off"
+        return "mdi:sleep" if self._sleeping else "mdi:sleep-off"
 
 
 async def async_setup_entry(
-        hass: HomeAssistant,
-        entry: ConfigEntry,
-        async_add_entities
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities,
 ):
-    """Set up notify service from a config entry."""
-    # Get config values
+    """Set up the switches from a config entry."""
     name = entry.data.get("name", "unnamed device")
     site_id = entry.data.get("site_id", "unknown")
     device_type = entry.data.get("device_type", "voice_assistant")
 
-    phal_switches = [
-        HiveMindSSHSwitch(
-            bus=entry.hm_bus,
-            name=name,
-            site_id=site_id
-        )
-    ]
-    voice_switches = [
-        HiveMindMicMuteSwitch(
-            bus=entry.hm_bus,
-            name=name,
-            site_id=site_id
-        ),
-        HiveMindSleepModeSwitch(
-            bus=entry.hm_bus,
-            name=name,
-            site_id=site_id
-        )
-    ]
-    audio_switches = [
-        HiveMindVolumeMuteSwitch(
-            bus=entry.hm_bus,
-            name=name,
-            site_id=site_id
-        )
-    ]
+    switches = [HiveMindSSHSwitch(bus=entry.hm_bus, name=name, site_id=site_id)]
 
-
-    switches = phal_switches
     if device_type in ["voice_assistant", "media_player"]:
-        switches += audio_switches
+        switches.append(
+            HiveMindVolumeMuteSwitch(bus=entry.hm_bus, name=name, site_id=site_id)
+        )
         if device_type == "voice_assistant":
-            switches += voice_switches
+            switches += [
+                HiveMindMicMuteSwitch(bus=entry.hm_bus, name=name, site_id=site_id),
+                HiveMindSleepModeSwitch(bus=entry.hm_bus, name=name, site_id=site_id),
+            ]
 
-
-    # Add it to Home Assistant
     async_add_entities(switches)

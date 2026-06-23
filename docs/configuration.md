@@ -29,6 +29,12 @@ the integration; there is no YAML.
 
 ## Identity storage
 
-The integration writes its HiveMind node identity to `_identity.json` inside the
-installed `custom_components/hivemind/` package directory. The bus uses a fixed
-session id (`default`) so the hub does not assign a random session per connection.
+The integration stores its HiveMind node identity under Home Assistant's
+configuration directory (`<config>/hivemind/<entry_id>/_identity.json`), created on
+first connection. It is kept out of the `custom_components/` package directory so it
+survives upgrades and never needs to write there at runtime.
+
+The bus uses a fixed session id (`default`) so the hub does not assign a random
+session per connection. `hivemind-core` only allows the `default` session for
+**admin** clients — which is why the client must be provisioned with `--admin`
+(see [permissions](permissions.md)).

@@ -32,6 +32,10 @@ Fill in the config flow:
 - **Access key / Password** — the client credentials you provisioned in step 1.
 - **Site id**, **legacy audio**, **allow self-signed** — optional.
 
+The form checks the connection before it is saved: if the hub is unreachable you
+get **"cannot connect"**, and if it rejects the credentials you get **"invalid
+auth"** — so you find out immediately rather than from a silent failure later.
+
 ## 4. Verify
 
 Once added, the entities for the chosen device type appear under the new HiveMind

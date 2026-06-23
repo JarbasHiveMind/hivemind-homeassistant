@@ -1,0 +1,7 @@
+# Tier 1 test dependencies (no network): the HA test harness plus the
+# integration's own runtime requirements so the component imports.
+pytest-homeassistant-custom-component
+hivemind_bus_client>=0.4.3
+ovos-bus-client
+ovos-utils
+json_database
