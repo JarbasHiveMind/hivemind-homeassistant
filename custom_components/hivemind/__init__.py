@@ -2,6 +2,7 @@
 
 import logging
 import os
+from dataclasses import dataclass
 
 from hivemind_bus_client.client import HiveMessageBusClient
 from hivemind_bus_client.identity import NodeIdentity
@@ -13,6 +14,26 @@ from ovos_utils.fakebus import FakeBus
 from .const import DOMAIN, USER_AGENT
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class HiveMindData:
+    """Runtime data stored on the config entry."""
+
+    bus: HiveMessageBusClient
+
+
+type HiveMindConfigEntry = ConfigEntry[HiveMindData]
+
+
+def _platforms(device_type: str) -> list[str]:
+    """Platforms to set up for a given device type."""
+    domains = ["binary_sensor", "button", "switch"]
+    if device_type in ("voice_assistant", "media_player"):
+        domains += ["notify", "media_player"]
+        if device_type == "voice_assistant":
+            domains += ["select", "sensor"]
+    return domains
 
 
 def _identity_path(hass: HomeAssistant, entry: ConfigEntry) -> str:
@@ -72,18 +93,17 @@ async def get_bus(hass: HomeAssistant, entry: ConfigEntry) -> HiveMessageBusClie
     )
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: HiveMindConfigEntry) -> bool:
     """Set up HiveMind from a config entry."""
-    device_type = entry.data.get("device_type", "voice_assistant")
-
-    # Store config entry for this domain
+    bus = await get_bus(hass, entry)
+    entry.runtime_data = HiveMindData(bus=bus)
+    # kept for backwards compatibility with platform setup code
+    entry.hm_bus = bus
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = entry
-
-    entry.hm_bus = await get_bus(hass, entry)
 
     async def _connect_later() -> None:
         try:
-            await hass.async_add_executor_job(entry.hm_bus.connect)
+            await hass.async_add_executor_job(bus.connect)
             _LOGGER.info("Connected to HiveMind bus")
         except Exception as err:  # noqa: BLE001 - connect() retries internally
             _LOGGER.warning(
@@ -93,10 +113,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.loop.create_task(_connect_later())
 
-    domains = ["binary_sensor", "button", "switch"]
-    if device_type in ["voice_assistant", "media_player"]:
-        domains.extend(["notify", "media_player"])
-        if device_type == "voice_assistant":
-            domains += ["select", "sensor"]
-    await hass.config_entries.async_forward_entry_setups(entry, domains)
+    await hass.config_entries.async_forward_entry_setups(
+        entry, _platforms(entry.data.get("device_type", "voice_assistant"))
+    )
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: HiveMindConfigEntry) -> bool:
+    """Tear down the entry: unload platforms and close the bus connection."""
+    platforms = _platforms(entry.data.get("device_type", "voice_assistant"))
+    unloaded = await hass.config_entries.async_unload_platforms(entry, platforms)
+    if unloaded:
+        bus = entry.runtime_data.bus
+        await hass.async_add_executor_job(bus.close)
+        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+    return unloaded
