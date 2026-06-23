@@ -1,17 +1,15 @@
 
 import logging
-from typing import Any, Dict
+from typing import Any
 from hivemind_bus_client.client import HiveMessageBusClient
 from hivemind_bus_client.message import HiveMessageType, HiveMessage
-from ovos_utils.log import LOG
 from homeassistant.components.media_player import (
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
-    MediaPlayerDeviceClass,
     MediaPlayerEnqueue
 )
 from homeassistant.components.media_player.const import (
-    MediaType, MediaPlayerEntityFeature, RepeatMode, MediaPlayerState, MediaClass
+    MediaType, RepeatMode, MediaPlayerState
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -22,7 +20,7 @@ from homeassistant.components.media_player.browse_media import (
 )
 
 from ovos_utils.ocp import (MediaType as OCPMediaType, MediaEntry, TrackState,
-                            PlaybackType, PlaybackMode, PlayerState, MediaState, LoopState)
+                            PlaybackType, PlayerState, MediaState, LoopState)
 
 
 from .entity import HiveMindEntity
@@ -372,13 +370,13 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
             message = Message('mycroft.audio.service.resume')
         else:
             message = Message('ovos.common_play.resume')
-        _LOGGER.info(f"play")
+        _LOGGER.info("play")
         self.send_to_ovos(message)
         self.async_write_ha_state()
 
     async def async_media_pause(self):
         self._state = MediaPlayerState.PAUSED
-        _LOGGER.info(f"pause")
+        _LOGGER.info("pause")
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.pause')
         else:
@@ -389,7 +387,7 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
 
     async def async_media_stop(self):
         self._state = MediaPlayerState.IDLE
-        _LOGGER.info(f"stop")
+        _LOGGER.info("stop")
         if self.legacy_audioservice:
             message = Message('mycroft.audio.service.stop')
         else:
@@ -478,7 +476,7 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
         """Clear players playlist."""
         message = Message('ovos.common_play.playlist.clear')
         self.send_to_ovos(message)
-        _LOGGER.info(f"clear playlist")
+        _LOGGER.info("clear playlist")
         self.async_write_ha_state()
 
     async def async_set_shuffle(self, shuffle: bool) -> None:
