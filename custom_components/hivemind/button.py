@@ -44,12 +44,22 @@ class HiveMindConnectionButton(ButtonEntity):
         """Return a unique ID for this entity."""
         return f"hm-reconnect-button-{self._name}-{self.site_id}".replace(" ", "")
 
-    def press(self) -> None:
-        """Press the button to connect or disconnect."""
+    async def async_press(self) -> None:
+        """Reconnect to HiveMind.
+
+        The reconnect is blocking I/O (socket close/open), so it must run in an
+        executor — doing it on the event loop freezes Home Assistant.
+        """
         connected = self.bus.handshake_event.is_set()
-        _LOGGER.info(f"HiveMind Reconnection Button pressed: {'Connected' if connected else 'Disconnected'}")
+        _LOGGER.info(
+            "HiveMind Reconnection Button pressed: %s",
+            "Connected" if connected else "Disconnected",
+        )
+        await self.hass.async_add_executor_job(self._reconnect)
+
+    def _reconnect(self) -> None:
         self.bus.close()
-        # TODO - below not done in bus.close() in older versions of hivemind-bus-client
+        # close() does not reset these on older hivemind-bus-client versions
         self.bus.handshake_event.clear()
         self.bus.connected_event.clear()
         self.bus.protocol = None

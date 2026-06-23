@@ -3,7 +3,7 @@ import logging
 from typing import List
 from ovos_bus_client.message import Message
 from hivemind_bus_client.client import HiveMessageBusClient
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -51,12 +51,12 @@ class HiveMindListenerStateSensor(SensorEntity):
         )
 
     @property
-    def device_class(self) -> SensorDeviceClass:
-        return SensorDeviceClass.ENUM
+    def available(self) -> bool:
+        return self.bus.handshake_event.is_set()
 
     @property
-    def state_class(self) -> SensorStateClass :
-        return SensorStateClass.MEASUREMENT
+    def device_class(self) -> SensorDeviceClass:
+        return SensorDeviceClass.ENUM
 
     @property
     def options(self) -> List[str]:

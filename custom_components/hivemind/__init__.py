@@ -1,4 +1,4 @@
-"""Send notifications to HiveMind devices"""
+"""The HiveMind integration."""
 
 import logging
 import os
@@ -10,51 +10,86 @@ from homeassistant.core import HomeAssistant
 from json_database import JsonStorage
 from ovos_utils.fakebus import FakeBus
 
-from .const import DOMAIN
+from .const import DOMAIN, USER_AGENT
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def get_bus(entry) -> HiveMessageBusClient:
-    # Get config values
-    key = entry.data["access_key"]
-    password = entry.data["password"]
-    host = entry.data["host"]
-    port = entry.data.get("port", 5678)
-    self_signed = entry.data.get("allow_self_signed", False)
+def _identity_path(hass: HomeAssistant, entry: ConfigEntry) -> str:
+    """Per-entry identity file, stored under Home Assistant's config dir.
 
-    ovos_bus = FakeBus()  # explicitly passed so we use "default" session, otherwise HM assigns random session_id
-    ovos_bus.session_id = entry.data.get("session_id", "default")
+    The node identity (and the RSA key written alongside it) must live in a
+    writable, persistent location that is *not* the integration's install
+    directory — that directory can be read-only and is wiped on upgrade.
+    """
+    return hass.config.path(DOMAIN, entry.entry_id, "_identity.json")
 
-    identity_file = JsonStorage(f"{os.path.dirname(__file__)}/_identity.json")
-    identity = NodeIdentity(identity_file)
-    identity.site_id = entry.data.get("site_id", "unknown")
-    return HiveMessageBusClient(key=key,
-                                password=password,
-                                port=port,
-                                host=host,
-                                useragent="HomeAssistantV0.0.2",
-                                self_signed=self_signed,
-                                internal_bus=ovos_bus,
-                                identity=NodeIdentity(identity_file))
+
+def _build_bus(identity_file: str, data: dict) -> HiveMessageBusClient:
+    """Construct the HiveMind bus client.
+
+    Runs in an executor thread: ``JsonStorage`` and ``HiveMessageBusClient``
+    both touch the filesystem (reading the identity, generating the RSA key),
+    which must never happen on the event loop.
+    """
+    os.makedirs(os.path.dirname(identity_file), exist_ok=True)
+
+    key = data["access_key"]
+    password = data["password"]
+    host = data["host"]
+    port = data.get("port", 5678)
+    self_signed = data.get("allow_self_signed", False)
+
+    # explicitly pass a FakeBus so we keep a stable "default" session instead of
+    # letting HiveMind assign a random session_id per (re)connection
+    ovos_bus = FakeBus()
+    ovos_bus.session_id = data.get("session_id", "default")
+
+    # one identity, fully configured, then handed to the client — previously a
+    # second, unconfigured NodeIdentity was passed, discarding site_id et al.
+    identity = NodeIdentity(JsonStorage(identity_file))
+    identity.access_key = key
+    identity.password = password
+    identity.site_id = data.get("site_id", "unknown")
+    identity.name = data.get("name", "Home Assistant")
+
+    return HiveMessageBusClient(
+        key=key,
+        password=password,
+        port=port,
+        host=host,
+        useragent=USER_AGENT,
+        self_signed=self_signed,
+        internal_bus=ovos_bus,
+        identity=identity,
+    )
+
+
+async def get_bus(hass: HomeAssistant, entry: ConfigEntry) -> HiveMessageBusClient:
+    """Build the bus client off the event loop."""
+    return await hass.async_add_executor_job(
+        _build_bus, _identity_path(hass, entry), dict(entry.data)
+    )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up HiveMind from a config entry."""
     device_type = entry.data.get("device_type", "voice_assistant")
 
     # Store config entry for this domain
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = entry
 
-    entry.hm_bus = await get_bus(entry)
+    entry.hm_bus = await get_bus(hass, entry)
 
-    async def _connect_later():
+    async def _connect_later() -> None:
         try:
             await hass.async_add_executor_job(entry.hm_bus.connect)
             _LOGGER.info("Connected to HiveMind bus")
-        except Exception as e:
-            _LOGGER.warning(f"Initial HiveMind connection failed, will retry in background: {e}")
-            # hm_bus.connect() already has its own retry/backoff logic
-
+        except Exception as err:  # noqa: BLE001 - connect() retries internally
+            _LOGGER.warning(
+                "Initial HiveMind connection failed, will retry in background: %s",
+                err,
+            )
 
     hass.loop.create_task(_connect_later())
 
