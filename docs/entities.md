@@ -1,8 +1,8 @@
 # Entities
 
 Which entities appear depends on the configured `device_type` (see
-[configuration](configuration.md)). The table notes the minimum device type that
-exposes each.
+[configuration](configuration.md)). The table notes the minimum device type
+that exposes each entity.
 
 ## Always (all device types)
 
@@ -28,9 +28,9 @@ exposes each.
 | Media player | media_player | OCP-backed playback, volume, transport controls. |
 | Notify | notify | Send text to OVOS to speak (TTS). |
 
-The media player maps Home Assistant `MediaType` values to OVOS OCP media types
-(music, video, movie, episode, TV channel, game, …). With `legacy_audio` enabled it
-drives the legacy Audio Service instead of OCP.
+The media player maps Home Assistant `MediaType` values to OVOS OCP media
+types (music, video, movie, episode, TV channel, game, and others). With
+`legacy_audio` enabled, it drives the legacy Audio Service instead of OCP.
 
 ## `voice_assistant` only
 
@@ -39,5 +39,8 @@ drives the legacy Audio Service instead of OCP.
 | Listener state | sensor | Current listener/recognizer state. |
 | Listening mode | select | Switch the listening mode. |
 
-These cover the microphone / VAD / STT side that only a full voice assistant device
-exposes.
+These entities cover the microphone, VAD, and STT side that only a full voice
+assistant device exposes.
+
+---
+[← Configuration](configuration.md) · [Home](index.md) · [Permissions →](permissions.md)
