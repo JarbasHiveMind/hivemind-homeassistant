@@ -3,87 +3,45 @@
 A Home Assistant custom integration (`domain: hivemind`) that connects Home
 Assistant to an [OpenVoiceOS](https://openvoiceos.com) instance over the
 [HiveMind](https://github.com/JarbasHiveMind/HiveMind-core) protocol and exposes
-OVOS as Home Assistant entities. Installable through HACS (as a custom repository)
-or by hand.
+OVOS as Home Assistant entities. You can install it through HACS (as a custom
+repository) or by hand.
 
-It does more than send voice commands: it controls the OVOS device at a system
-level — audio playback, volume, microphone, sleep/wake, and system power — by
-injecting low-level bus messages over the HiveMind link.
+The integration does more than send voice commands. It controls the OVOS device
+at a system level: audio playback, volume, microphone, sleep and wake, and
+system power. It does this by injecting low-level bus messages over the
+HiveMind link.
 
 ## Where it sits
 
 Home Assistant connects to a HiveMind hub
-([hivemind-core](https://github.com/JarbasHiveMind/HiveMind-core)) running
+([hivemind-core](https://github.com/JarbasHiveMind/HiveMind-core)) that runs
 alongside an OVOS instance, using a HiveMind **client key**. Because the
-integration injects low-level bus messages rather than just utterances, that client
-must have **admin** privileges and the message-type allowlist described under
-[Permissions Required](#permissions-required).
+integration injects low-level bus messages instead of only utterances, that
+client must have **admin** privileges and the message-type allowlist described
+under [Permissions Required](#permissions-required).
 
 ## Prerequisites
 
 - A running HiveMind hub (`hivemind-core`) reachable from Home Assistant.
-- An admin-privileged HiveMind client key + password registered on the hub for
-  Home Assistant (see [Permissions Required](#permissions-required)).
+- An admin-privileged HiveMind client key and password registered on the hub
+  for Home Assistant (see [Permissions Required](#permissions-required)).
 - Home Assistant with access to its `config/custom_components/` directory.
-- The integration declares the runtime requirement `hivemind_bus_client>=0.4.3`
-  (pulled in by Home Assistant on first load).
+- The integration declares the runtime requirement `hivemind_bus_client>=0.4.3`,
+  which Home Assistant installs on first load.
 
 ## Installation
 
-**HACS (custom repository):** add `https://github.com/JarbasHiveMind/hivemind-homeassistant`
-as a custom repository (category *Integration*), install **HiveMind**, then restart
-Home Assistant.
+### HACS (custom repository)
 
-**Manual:** copy `custom_components/hivemind` into your Home Assistant
-`config/custom_components/` directory and restart.
+1. Add `https://github.com/JarbasHiveMind/hivemind-homeassistant` as a custom
+   repository (category *Integration*).
+2. Install **HiveMind**.
+3. Restart Home Assistant.
 
-Then add it from **Settings → Devices & Services → Add Integration → HiveMind**. The
-config flow validates the hub connection before saving (clear `cannot connect` /
-`invalid auth` errors instead of a silent failure).
+### Manual
 
-## Configuration fields
-
-When you add the integration (Settings → Devices & Services → Add Integration →
-HiveMind), the config flow asks for:
-
-| Field | Default | Description |
-| --- | --- | --- |
-| `device_type` | `voice_assistant` | Which OVOS capabilities to expose (see below). |
-| `name` | — | Friendly name for the device in Home Assistant. |
-| `host` | — | HiveMind hub host (e.g. `ws://192.168.1.10`). |
-| `access_key` | — | HiveMind client access key. |
-| `password` | — | HiveMind client password. |
-| `port` | `5678` | HiveMind WebSocket port. |
-| `legacy_audio` | `false` | Use the legacy Audio Service instead of OCP. |
-| `site_id` | `unknown` | OVOS site id. |
-| `allow_self_signed` | `false` | Accept a self-signed TLS certificate. |
-
-### Device types
-
-The `device_type` controls which platforms are set up:
-
-| Type | Exposes |
-| --- | --- |
-| `agent` | binary sensors, buttons, switches (text I/O only). |
-| `media_player` | the above + `notify` + `media_player`. |
-| `voice_assistant` | the above + `select` + `sensor` (full mic/VAD/STT device). |
-
-See [`docs/`](docs/index.md) for the full setup, entity, and permissions walkthrough.
-
----
-
-## Related Projects:
-
-- [hivemind-homeassistant](https://github.com/JarbasHiveMind/hivemind-homeassistant) (this repo) allows HiveMind to show up as a player in Home Assistant
-- [hivemind-player-protocol](https://github.com/HiveMindInsiders/hivemind-player-protocol) turn any device into a standalone HiveMind OCP player
-- [ovos-skill-music-assistant](https://github.com/HiveMindInsiders/ovos-skill-music-assistant) allows OVOS to search media in MA sources
-- [ovos-media-plugin-mass](https://github.com/HiveMindInsiders/ovos-media-plugin-mass) allows OVOS to control MA players
-  
----
-
-## Manual Installation
-
-1. Copy the `hivemind` folder into your Home Assistant `custom_components` directory:
+1. Copy the `hivemind` folder into your Home Assistant
+   `custom_components` directory:
 
    ```bash
    mkdir -p /config/custom_components
@@ -92,48 +50,63 @@ See [`docs/`](docs/index.md) for the full setup, entity, and permissions walkthr
 
 2. Restart Home Assistant.
 
-3. Add the HiveMind integration via the Home Assistant UI:  
-   **Settings → Devices & Services → Add Integration → HiveMind**
+### Add the integration
 
----
+Go to **Settings → Devices & Services → Add Integration → HiveMind**. The
+config flow checks the hub connection before it saves the entry, so a bad host
+or credential shows a clear `cannot connect` or `invalid auth` error instead of
+a silent failure.
 
-## Home Assistant Setup
+## Configuration fields
 
-![setup](https://github.com/user-attachments/assets/5b34c714-3faa-4c8b-8c84-e438c20085fb)
+The config flow asks for these fields when you add the integration:
 
-Once a HiveMind device is added to HomeAssistant you will have several entities available
+| Field | Default | Description |
+| --- | --- | --- |
+| `device_type` | `voice_assistant` | Which OVOS capabilities to expose (see below). |
+| `name` | n/a | Friendly name for the device in Home Assistant. |
+| `host` | n/a | HiveMind hub host (e.g. `ws://192.168.1.10`). |
+| `access_key` | n/a | HiveMind client access key. |
+| `password` | n/a | HiveMind client password. |
+| `port` | `5678` | HiveMind WebSocket port. |
+| `legacy_audio` | `false` | Use the legacy Audio Service instead of OCP. |
+| `site_id` | `unknown` | OVOS site id. |
+| `allow_self_signed` | `false` | Accept a self-signed TLS certificate. |
 
-![image](https://github.com/user-attachments/assets/f4a56e28-96e1-470e-99cc-0f9e8707b37f)
+### Device types
 
-controls
+The `device_type` field controls which platforms Home Assistant sets up:
 
-![image](https://github.com/user-attachments/assets/d76cd0a6-7dc1-4af8-93d3-73668e11a405)
+| Type | Exposes |
+| --- | --- |
+| `agent` | binary sensors, buttons, switches (text input and output only). |
+| `media_player` | the above, plus `notify` and `media_player`. |
+| `voice_assistant` | the above, plus `select` and `sensor` (full mic, VAD, and STT device). |
 
-media player
+See [`docs/`](docs/index.md) for the full setup, entity, and permissions guide.
 
-![image](https://github.com/user-attachments/assets/9bb3bdba-bce0-47f5-b837-6f934eff67ef)
+## Usage
 
-notify
+Once you add a HiveMind device, its entities appear in Home Assistant: a
+connection sensor, control buttons and switches, and — depending on
+`device_type` — a media player, a notify service, status sensors, and a
+listening-mode selector.
 
-![image](https://github.com/user-attachments/assets/57a797f7-06a6-4d12-9eb0-a3496fe32748)
+![Home Assistant entities](https://github.com/user-attachments/assets/f4a56e28-96e1-470e-99cc-0f9e8707b37f)
 
-status sensors
+Send text to the OVOS instance with the `notify` service so it speaks the text
+through TTS. Control playback with the `media_player` entity, which maps Home
+Assistant `MediaType` values to OVOS OCP media types (music, video, movie,
+episode, TV channel, game, and others). It also works with sources exposed by
+[ovos-skill-music-assistant](https://github.com/HiveMindInsiders/ovos-skill-music-assistant).
 
-![image](https://github.com/user-attachments/assets/5f98232b-1243-445f-98ed-bb03e23a50b5)
-
-
-## Music Assistant
-
-![image](https://github.com/user-attachments/assets/1b0adcb0-bb92-4125-82ee-36367ce2bf60)
-
-
----
+![Media player entity](https://github.com/user-attachments/assets/9bb3bdba-bce0-47f5-b837-6f934eff67ef)
 
 ## Permissions Required
 
-Since this integration does **more than just voice queries**, it requires **low-level permissions** to inject and control bus messages directly.  
-
-The client connecting to HiveMind must have **admin privileges** and permission to access the following message types:
+This integration does more than send voice queries: it injects and controls
+bus messages directly. The client connecting to HiveMind must have **admin**
+privileges and permission to use the following message types.
 
 ### ovos-core
 - `mycroft.stop`
@@ -182,7 +155,7 @@ The client connecting to HiveMind must have **admin privileges** and permission 
 - `ovos.common_play.repeat.one`
 
 #### Audio Service
-*(only if enabled manually — for systems without the OCP Audio Plugin)*
+*(only if you enable it manually, for systems without the OCP Audio Plugin)*
 
 - `mycroft.audio.service.play`
 - `mycroft.audio.service.resume`
@@ -211,18 +184,26 @@ The client connecting to HiveMind must have **admin privileges** and permission 
 
 #### ovos-phal-plugin-camera
 
-(*work in progress*)
+*(work in progress)*
 
 - `ovos.phal.camera.ping`
 - `ovos.phal.camera.get`
 - `ovos.phal.camera.open`
 - `ovos.phal.camera.close`
 
----
+### Security notes
 
-## Notes
-
-- This integration **directly manipulates OpenVoiceOS** state
+- This integration directly manipulates OpenVoiceOS state.
 - Proper permission management is critical for security.
-- Only trusted Home Assistant instances should connect to your HiveMind server.
+- Only connect trusted Home Assistant instances to your HiveMind hub.
 
+## Related Projects
+
+- [hivemind-homeassistant](https://github.com/JarbasHiveMind/hivemind-homeassistant) (this repo) lets HiveMind show up as a player in Home Assistant.
+- [hivemind-player-protocol](https://github.com/HiveMindInsiders/hivemind-player-protocol) turns any device into a standalone HiveMind OCP player.
+- [ovos-skill-music-assistant](https://github.com/HiveMindInsiders/ovos-skill-music-assistant) lets OVOS search media in Music Assistant sources.
+- [ovos-media-plugin-mass](https://github.com/HiveMindInsiders/ovos-media-plugin-mass) lets OVOS control Music Assistant players.
+
+## License
+
+[MIT](LICENSE)
