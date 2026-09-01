@@ -24,7 +24,7 @@ USER_INPUT = {
 
 
 async def _submit(hass, *, handshake_ok=True, raises=False):
-    def _fake_validate(data):
+    def _fake_validate(data, identity_file):
         if raises:
             raise ConnectionError("boom")
         return handshake_ok
