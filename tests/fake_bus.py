@@ -22,6 +22,8 @@ class FakeHiveBus:
             self.connected_event.set()
         self._host = "ws://testhub"
         self.site_id = "test"
+        # the real client exposes the pinned internal bus that connect() binds
+        self.internal_bus = self
         self.protocol = object()
         self.crypto_key = b"k"
         self.handlers: dict[str, list] = {}

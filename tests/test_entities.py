@@ -3,9 +3,10 @@
 import asyncio
 from unittest.mock import patch
 
-import custom_components.hivemind as hivemind
-from custom_components.hivemind.button import HiveMindConnectionButton
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components import hivemind
+from custom_components.hivemind.button import HiveMindConnectionButton
 
 from .fake_bus import FakeHiveBus
 

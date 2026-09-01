@@ -9,7 +9,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 
-from . import _build_bus
+from . import _build_bus, _connect
 from .const import DEVICE_TYPES, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ def _try_handshake(data: dict) -> bool:
     identity_file = os.path.join(tmpdir, "_identity.json")
     bus = _build_bus(identity_file, data)
     try:
-        bus.connect()
+        _connect(bus)
         waiter = getattr(bus, "wait_for_handshake", None)
         if waiter is not None:
             waiter(timeout=10)
@@ -50,8 +50,8 @@ def _try_handshake(data: dict) -> bool:
     finally:
         try:
             bus.close()
-        except Exception:  # noqa: BLE001 - best effort
-            pass
+        except Exception:
+            _LOGGER.debug("Error closing throwaway HiveMind connection", exc_info=True)
 
 
 async def validate_connection(hass: HomeAssistant, data: dict) -> str | None:

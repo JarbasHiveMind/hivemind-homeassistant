@@ -1,27 +1,35 @@
 
 import logging
 from typing import Any
+
 from hivemind_bus_client.client import HiveMessageBusClient
-from hivemind_bus_client.message import HiveMessageType, HiveMessage
+from hivemind_bus_client.message import HiveMessage, HiveMessageType
+from homeassistant.components import media_source
 from homeassistant.components.media_player import (
+    MediaPlayerEnqueue,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
-    MediaPlayerEnqueue
+)
+from homeassistant.components.media_player.browse_media import (
+    async_process_play_media_url,  #, BrowseMedia, SearchMediaQuery, SearchMedia
 )
 from homeassistant.components.media_player.const import (
-    MediaType, RepeatMode, MediaPlayerState
+    MediaPlayerState,
+    MediaType,
+    RepeatMode,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from ovos_bus_client.message import Message
-from homeassistant.components import media_source
-from homeassistant.components.media_player.browse_media import (
-    async_process_play_media_url #, BrowseMedia, SearchMediaQuery, SearchMedia
+from ovos_utils.ocp import (
+    LoopState,
+    MediaEntry,
+    MediaState,
+    PlaybackType,
+    PlayerState,
+    TrackState,
 )
-
-from ovos_utils.ocp import (MediaType as OCPMediaType, MediaEntry, TrackState,
-                            PlaybackType, PlayerState, MediaState, LoopState)
-
+from ovos_utils.ocp import MediaType as OCPMediaType
 
 from .entity import HiveMindEntity
 
@@ -194,8 +202,8 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
         try:
             _LOGGER.info(f"HiveMind Message: {payload.serialize()}")
             self.bus.emit(payload)
-        except Exception as e:
-            _LOGGER.error(f"Error from HiveMind messagebus: {e}")
+        except Exception:
+            _LOGGER.exception("Error from HiveMind messagebus")
 
     ######
 

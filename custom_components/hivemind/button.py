@@ -44,7 +44,7 @@ class HiveMindConnectionButton(HiveMindEntity, ButtonEntity):
         self.bus.connected_event.clear()
         self.bus.protocol = None
         self.bus.crypto_key = None
-        self.bus.connect(site_id=self.bus.site_id)
+        self.bus.connect(self.bus.internal_bus, site_id=self.bus.site_id)
 
     @property
     def icon(self) -> str | None:

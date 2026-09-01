@@ -2,10 +2,11 @@
 
 from unittest.mock import patch
 
-import custom_components.hivemind as hivemind
-import custom_components.hivemind.config_flow as config_flow
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components import hivemind
+from custom_components.hivemind import config_flow
 
 from .fake_bus import FakeHiveBus
 
