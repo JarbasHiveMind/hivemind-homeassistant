@@ -2,10 +2,11 @@
 
 from unittest.mock import patch
 
-import custom_components.hivemind as hivemind
 import pytest
 from homeassistant.config_entries import ConfigEntryState
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components import hivemind
 
 from .fake_bus import FakeHiveBus
 

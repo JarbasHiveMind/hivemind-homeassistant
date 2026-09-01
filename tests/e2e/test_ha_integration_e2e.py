@@ -17,11 +17,12 @@ hub's deny-by-default ACL, and exchanges real messages.
 import time
 from urllib.parse import urlparse
 
-import custom_components.hivemind  # noqa: F401 - ensure HA can discover the integration
 import pytest
-from homeassistant.setup import async_setup_component
 from hivescope.topology import TopologyBuilder
+from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+import custom_components.hivemind  # noqa: F401 - ensure HA can discover the integration
 
 SAT_KEY = "ha-key"
 SAT_PASSWORD = "ha-password"

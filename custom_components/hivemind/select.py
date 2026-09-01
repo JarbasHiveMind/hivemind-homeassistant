@@ -1,7 +1,6 @@
 """HiveMind select: listening mode (via ovos-dinkum-listener)."""
 
 import logging
-from typing import List
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -46,7 +45,7 @@ class HiveMindListeningMode(HiveMindEntity, SelectEntity):
         return self._mode
 
     @property
-    def options(self) -> List[str]:
+    def options(self) -> list[str]:
         return ["wakeword", "continuous", "hybrid"]
 
     async def async_select_option(self, option: str) -> None:

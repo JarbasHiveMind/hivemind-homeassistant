@@ -79,7 +79,8 @@ integration talks to it via `hivemind_bus_client`. Related repos:
 - **Floor pins only** (`>=X.Y.Za1`), bumped when a feature or fix is actually
   needed — with a one-line comment saying why. No upper caps unless a specific
   released version is genuinely broken (say which and why). The manifest
-  already pins `hivemind_bus_client>=0.4.3` this way.
+  pins `hivemind_bus_client>=1.0.16a1` this way — the v3 Noise line, whose
+  connect/handshake/bus-binding API this integration is written against.
 - **No lockfiles, ever.** Target the latest alphas (`--prerelease=allow`).
 - HA integration requirements live in `custom_components/hivemind/manifest.json`
   (installed by Home Assistant itself on load); test-only deps live in

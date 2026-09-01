@@ -86,6 +86,18 @@ def _build_bus(identity_file: str, data: dict) -> HiveMessageBusClient:
     )
 
 
+def _connect(bus: HiveMessageBusClient, site_id: str | None = None) -> None:
+    """Open the connection, binding the client's own internal bus.
+
+    ``connect()`` binds a throwaway internal bus by default, so inbound BUS
+    messages land on a bus nobody listens to — the ``on_mycroft`` handlers the
+    entities register live on ``bus.internal_bus``. Passing that same bus is what
+    routes replies (listener state, speak status, service alive/ready) back to
+    the entities, and keeps the pinned "default" session across reconnects.
+    """
+    bus.connect(bus.internal_bus, site_id=site_id)
+
+
 async def get_bus(hass: HomeAssistant, entry: ConfigEntry) -> HiveMessageBusClient:
     """Build the bus client off the event loop."""
     return await hass.async_add_executor_job(
@@ -103,7 +115,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: HiveMindConfigEntry) -> 
 
     async def _connect_later() -> None:
         try:
-            await hass.async_add_executor_job(bus.connect)
+            await hass.async_add_executor_job(_connect, bus)
             _LOGGER.info("Connected to HiveMind bus")
         except Exception as err:  # noqa: BLE001 - connect() retries internally
             _LOGGER.warning(

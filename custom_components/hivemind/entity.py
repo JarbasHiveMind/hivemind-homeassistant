@@ -9,7 +9,7 @@ integration stacks duplicate callbacks on the bus.
 """
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from hivemind_bus_client.client import HiveMessageBusClient
 from homeassistant.helpers.device_registry import DeviceInfo

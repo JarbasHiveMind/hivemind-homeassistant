@@ -1,7 +1,6 @@
 """HiveMind sensor: listener state (via ovos-dinkum-listener)."""
 
 import logging
-from typing import List
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -36,7 +35,7 @@ class HiveMindListenerStateSensor(HiveMindEntity, SensorEntity):
         return self._uid("listen-state")
 
     @property
-    def options(self) -> List[str]:
+    def options(self) -> list[str]:
         return [
             "wakeword", "continuous", "recording", "sleeping", "wake_up",
             "confirmation", "before_cmd", "in_cmd", "after_cmd",

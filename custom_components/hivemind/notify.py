@@ -2,10 +2,10 @@
 
 import logging
 
+from hivemind_bus_client.message import HiveMessage, HiveMessageType
 from homeassistant.components.notify import NotifyEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from hivemind_bus_client.message import HiveMessage, HiveMessageType
 from ovos_bus_client import Message
 
 from .entity import HiveMindEntity
@@ -36,7 +36,7 @@ class HiveMindNotifier(HiveMindEntity, NotifyEntity):
             _LOGGER.debug("HiveMind Message: %s", payload.serialize())
             self.bus.emit(payload)
         except Exception:
-            _LOGGER.error("Error from HiveMind messagebus", exc_info=True)
+            _LOGGER.exception("Error from HiveMind messagebus")
 
     def send_message(self, message: str, title: str | None = None) -> None:
         """Send a message."""
