@@ -17,11 +17,11 @@ HIVEMIND_SCHEMA = {
     vol.Required("device_type", default="voice_assistant"): vol.In(DEVICE_TYPES),
     vol.Required("name"): str,
     vol.Required("host"): str,
+    vol.Required("port", default=5678): int,
     vol.Required("access_key"): str,
     vol.Required("password"): str,
-    vol.Required("port", default=5678): int,
     vol.Required("legacy_audio", default=False): bool,
-    vol.Optional("site_id", default="unknown"): str,
+    vol.Optional("site_id"): str,
     vol.Required("allow_self_signed", default=False): bool,
 }
 
@@ -89,8 +89,12 @@ class HiveMindConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             errors["base"] = error
 
+        suggested_values = {k: v for k, v in (user_input or {}).items() if k != "password"}
+        data_schema = self.add_suggested_values_to_schema(
+            vol.Schema(HIVEMIND_SCHEMA), suggested_values
+        )
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(HIVEMIND_SCHEMA),
+            data_schema=data_schema,
             errors=errors,
         )

@@ -26,8 +26,9 @@ under [Permissions Required](#permissions-required).
 - An admin-privileged HiveMind client key and password registered on the hub
   for Home Assistant (see [Permissions Required](#permissions-required)).
 - Home Assistant with access to its `config/custom_components/` directory.
-- The integration declares the runtime requirement `hivemind_bus_client>=0.4.3`,
-  which Home Assistant installs on first load.
+- The integration declares the runtime requirement
+  `hivemind_bus_client>=1.0.16a1`, a prerelease — see
+  [Prerelease requirement](#prerelease-requirement) below.
 
 ## Installation
 
@@ -61,10 +62,14 @@ prereleases, fails to resolve the dependencies and reports `RequirementsNotFound
 Install into an environment that allows prereleases, for example:
 
 ```bash
-uv pip install --prerelease=allow hivemind_bus_client
+uv pip install --prerelease=allow "hivemind_bus_client>=1.0.16a1"
 # or
-pip install --pre hivemind_bus_client
+pip install --pre "hivemind_bus_client>=1.0.16a1"
 ```
+
+In a Home Assistant container, run the equivalent `pip install --pre` command
+inside the container (or its virtual environment) before you add the
+integration.
 
 This requirement stands until the HiveMind stack ships stable releases, at which
 point stock resolution succeeds without the prerelease flag.
@@ -84,12 +89,12 @@ The config flow asks for these fields when you add the integration:
 | --- | --- | --- |
 | `device_type` | `voice_assistant` | Which OVOS capabilities to expose (see below). |
 | `name` | n/a | Friendly name for the device in Home Assistant. |
-| `host` | n/a | HiveMind hub host (e.g. `ws://192.168.1.10`). |
+| `host` | n/a | HiveMind hub address — a bare hostname/IP (e.g. `192.168.1.10`) or a `ws://`/`wss://` URL to force the scheme. |
+| `port` | `5678` | HiveMind WebSocket port; a separate field from `host`. |
 | `access_key` | n/a | HiveMind client access key. |
 | `password` | n/a | HiveMind client password. |
-| `port` | `5678` | HiveMind WebSocket port. |
 | `legacy_audio` | `false` | Use the legacy Audio Service instead of OCP. |
-| `site_id` | `unknown` | OVOS site id. |
+| `site_id` | empty | Optional OVOS site id; leave blank if you have one hub. |
 | `allow_self_signed` | `false` | Accept a self-signed TLS certificate. |
 
 ### Device types
