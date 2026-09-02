@@ -50,6 +50,25 @@ under [Permissions Required](#permissions-required).
 
 2. Restart Home Assistant.
 
+### Prerelease requirement
+
+This integration depends on prerelease packages. Its dependency closure pulls in
+`poorman-handshake`, whose required version is a prerelease, so the integration
+must be installed in an environment where prerelease resolution is enabled. A
+stock Home Assistant add flow, or a plain `pip install` that does not enable
+prereleases, fails to resolve the dependencies and reports `RequirementsNotFound`.
+
+Install into an environment that allows prereleases, for example:
+
+```bash
+uv pip install --prerelease=allow hivemind_bus_client
+# or
+pip install --pre hivemind_bus_client
+```
+
+This requirement stands until the HiveMind stack ships stable releases, at which
+point stock resolution succeeds without the prerelease flag.
+
 ### Add the integration
 
 Go to **Settings → Devices & Services → Add Integration → HiveMind**. The

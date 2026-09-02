@@ -1,5 +1,6 @@
 """The HiveMind integration."""
 
+import hashlib
 import logging
 import os
 from dataclasses import dataclass
@@ -36,14 +37,22 @@ def _platforms(device_type: str) -> list[str]:
     return domains
 
 
-def _identity_path(hass: HomeAssistant, entry: ConfigEntry) -> str:
-    """Per-entry identity file, stored under Home Assistant's config dir.
+def _identity_path(hass: HomeAssistant, access_key: str) -> str:
+    """Persistent identity file for a given access key.
 
     The node identity (and the RSA key written alongside it) must live in a
     writable, persistent location that is *not* the integration's install
     directory — that directory can be read-only and is wiped on upgrade.
+
+    The path is keyed by the access key (not the config entry id) so the
+    config-flow validation and the runtime connection share one identity, and
+    therefore one Noise static key. A hub that pins the first static key it sees
+    per access key would otherwise pin whatever key validation used and lock the
+    real connection out. The access key is hashed only to keep it filesystem
+    safe; it is not a secret store.
     """
-    return hass.config.path(DOMAIN, entry.entry_id, "_identity.json")
+    slug = hashlib.sha256(access_key.encode()).hexdigest()[:16]
+    return hass.config.path(DOMAIN, slug, "_identity.json")
 
 
 def _build_bus(identity_file: str, data: dict) -> HiveMessageBusClient:
@@ -86,7 +95,11 @@ def _build_bus(identity_file: str, data: dict) -> HiveMessageBusClient:
     )
 
 
-def _connect(bus: HiveMessageBusClient, site_id: str | None = None) -> None:
+def _connect(
+    bus: HiveMessageBusClient,
+    site_id: str | None = None,
+    handshake_max_retries: int | None = None,
+) -> None:
     """Open the connection, binding the client's own internal bus.
 
     ``connect()`` binds a throwaway internal bus by default, so inbound BUS
@@ -94,14 +107,24 @@ def _connect(bus: HiveMessageBusClient, site_id: str | None = None) -> None:
     entities register live on ``bus.internal_bus``. Passing that same bus is what
     routes replies (listener state, speak status, service alive/ready) back to
     the entities, and keeps the pinned "default" session across reconnects.
+
+    ``handshake_max_retries`` bounds the handshake wait ``connect()`` performs
+    internally. Runtime setup leaves it ``None`` (retry forever); the config
+    flow passes a small bound so a wrong password — which the hub answers by
+    closing the socket cleanly (v3 Noise) rather than tripping ``_auth_rejected``
+    — fails fast instead of reconnecting forever.
     """
-    bus.connect(bus.internal_bus, site_id=site_id)
+    bus.connect(
+        bus.internal_bus,
+        site_id=site_id,
+        handshake_max_retries=handshake_max_retries,
+    )
 
 
 async def get_bus(hass: HomeAssistant, entry: ConfigEntry) -> HiveMessageBusClient:
     """Build the bus client off the event loop."""
     return await hass.async_add_executor_job(
-        _build_bus, _identity_path(hass, entry), dict(entry.data)
+        _build_bus, _identity_path(hass, entry.data["access_key"]), dict(entry.data)
     )
 
 
