@@ -1,5 +1,7 @@
 # Tier 2 (real-hub) e2e dependencies. Install with --pre: the hivemind-core
-# stack hivescope pulls in is still prerelease (2.x migration). hivescope is
-# pinned to the loopback-whitelist branch until that fix is released.
+# stack that hivescope pulls in is still prerelease (2.x migration).
 -r requirements_test.txt
-hivescope @ git+https://github.com/JarbasHiveMind/hivescope.git@fix/loopback-whitelist-only-connection
+hivescope>=0.8.1a1
+# hard per-test timeout so a stuck real-hub handshake fails fast instead of
+# hanging CI (the @pytest.mark.timeout on the e2e test needs this plugin)
+pytest-timeout

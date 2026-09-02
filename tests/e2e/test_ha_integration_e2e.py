@@ -14,6 +14,7 @@ hub's deny-by-default ACL, and exchanges real messages.
     -> hub admits it and injects it onto the agent bus
 """
 
+import threading
 import time
 from urllib.parse import urlparse
 
@@ -25,7 +26,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 import custom_components.hivemind  # noqa: F401 - ensure HA can discover the integration
 
 SAT_KEY = "ha-key"
-SAT_PASSWORD = "ha-password"
+# poorman_handshake enforces a 40-bit password-strength floor; a weak password
+# makes the hub's handshake crash on every connect and the client reconnect
+# forever, so this must be a high-entropy passphrase like a real deployment uses.
+SAT_PASSWORD = "SAT-e2e-Xq7v-Long-Passphrase-2026-hivemind"
 # the message types the integration actually emits that we assert on
 ALLOWED = [
     "mycroft.stop",
@@ -60,6 +64,7 @@ async def _wait_handshake(hass, bus, timeout=15):
         await hass.async_add_executor_job(time.sleep, 0.1)
 
 
+@pytest.mark.timeout(120)
 @pytest.mark.asyncio
 async def test_integration_connects_to_real_hub_and_speaks(hass, socket_enabled):
     # register core services (homeassistant.update_entity, button.press, ...)
@@ -121,3 +126,17 @@ async def test_integration_connects_to_real_hub_and_speaks(hass, socket_enabled)
         await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_block_till_done()
         builder.stop_all()
+        # HiveMessageBusClient.close() (called by async_unload_entry) signals its
+        # reconnect worker to stop but does not join it, and the client exposes
+        # no public per-instance handle to that daemon thread, so it can briefly
+        # outlive unload and trip Home Assistant's strict lingering-thread check.
+        # Wait it out here and assert it really died, rather than leaking it.
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            workers = [t for t in threading.enumerate() if "_run_worker" in t.name]
+            if not workers:
+                break
+            await hass.async_add_executor_job(workers[0].join, 1)
+        assert not [
+            t for t in threading.enumerate() if "_run_worker" in t.name
+        ], "hivemind bus client leaked its reconnect worker thread after unload"
