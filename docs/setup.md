@@ -19,6 +19,23 @@ cp -r custom_components/hivemind /config/custom_components/
 
 Restart Home Assistant.
 
+### Prerelease requirement
+
+This integration depends on a prerelease of `hivemind_bus_client`. Stock Home
+Assistant does not install prerelease packages, so a plain add of the
+integration fails with `RequirementsNotFound`. Before you add the integration,
+pre-install the dependency into the Home Assistant environment with prerelease
+resolution enabled, for example:
+
+```bash
+pip install --pre "hivemind_bus_client>=1.0.16a1"
+```
+
+In a Home Assistant container, run the equivalent `pip install --pre` command
+inside the container (or its virtual environment) before you restart Home
+Assistant and add the integration. This requirement stands until the
+HiveMind stack ships a stable release.
+
 ## 3. Add the integration
 
 In Home Assistant, go to **Settings → Devices & Services → Add Integration →
@@ -29,8 +46,9 @@ Fill in the config flow:
 - **Device type**: `agent`, `media_player`, or `voice_assistant` (see
   [configuration](configuration.md)).
 - **Name**: a friendly name for the device.
-- **Host / Port**: the HiveMind hub address (e.g. `ws://192.168.1.10`, port
-  `5678`).
+- **Host**: the HiveMind hub address — a bare hostname or IP (e.g.
+  `192.168.1.10`) or a `ws://`/`wss://` URL if you need to force the scheme
+  (`wss://` for TLS). **Port** is a separate field, default `5678`.
 - **Access key / Password**: the client credentials you provisioned in step 1.
 - **Site id**, **legacy audio**, **allow self-signed**: optional.
 

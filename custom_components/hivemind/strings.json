@@ -8,18 +8,25 @@
           "device_type": "Device type",
           "name": "Name",
           "host": "Host",
+          "port": "Port",
           "access_key": "Access key",
           "password": "Password",
-          "port": "Port",
           "legacy_audio": "Use the legacy audio service instead of OCP",
           "site_id": "Site ID",
           "allow_self_signed": "Allow self-signed certificates"
+        },
+        "data_description": {
+          "host": "Hub address — hostname or IP, e.g. 192.168.1.10; ws:// or wss:// optional",
+          "port": "Must match your hub's listener; default 5678",
+          "site_id": "Optional grouping label; leave as-is if you have one hub",
+          "name": "Friendly name shown in Home Assistant, e.g. 'Living Room HiveMind'",
+          "legacy_audio": "OCP is the OVOS media-playback system; enable this to use the older audio service instead"
         }
       }
     },
     "error": {
       "cannot_connect": "Could not reach the hub. Check the host, port, and that hivemind-core is running.",
-      "invalid_auth": "The hub rejected these credentials. Check the access key and password from `hivemind-core list-clients`."
+      "invalid_auth": "The hub answered but rejected the connection. Check the access key and password (from hivemind-core list-clients) — and confirm the port matches your hub's listener."
     },
     "abort": {
       "already_configured": "This hub is already configured."

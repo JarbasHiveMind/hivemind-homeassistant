@@ -63,6 +63,21 @@ async def test_unreachable_hub_shows_cannot_connect(hass):
     assert result["errors"] == {"base": "cannot_connect"}
 
 
+async def test_error_preserves_entered_values_except_password(hass):
+    result = await _submit(hass, handshake_ok=False)
+    assert result["type"] is FlowResultType.FORM
+
+    schema = result["data_schema"].schema
+    suggested = {
+        key: key.description["suggested_value"]
+        for key in schema
+        if hasattr(key, "description") and key.description
+    }
+    for field in ("device_type", "name", "host", "access_key", "port", "site_id"):
+        assert suggested.get(field) == USER_INPUT[field]
+    assert "password" not in suggested
+
+
 async def test_duplicate_hub_is_aborted(hass):
     MockConfigEntry(
         domain="hivemind",
