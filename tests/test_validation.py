@@ -59,6 +59,35 @@ def test_wrong_password_bounds_handshake_and_closes(hass):
     assert close.called, "the validation client must be closed on failure"
 
 
+def test_refused_connection_is_not_reported_as_invalid_auth(hass):
+    """A refused TCP connection is a connectivity failure, not bad credentials.
+
+    ``ConnectionRefusedError`` means the hub was never reached (down, or a
+    wrong host/port) — it must propagate out of ``_try_handshake`` so
+    ``validate_connection`` maps it to ``cannot_connect``, not swallow it into
+    the ``invalid_auth`` path used for a completed-but-rejected handshake.
+    """
+    with patch.object(config_flow, "_connect", side_effect=ConnectionRefusedError()):
+        try:
+            config_flow._try_handshake(DATA, _identity_path(hass, DATA["access_key"]))
+            assert False, "expected ConnectionRefusedError to propagate"
+        except ConnectionRefusedError:
+            pass
+
+
+async def test_refused_connection_yields_cannot_connect_error_key(hass):
+    with patch.object(config_flow, "_connect", side_effect=ConnectionRefusedError()):
+        error = await config_flow.validate_connection(hass, DATA)
+    assert error == "cannot_connect"
+
+
+async def test_runtime_error_still_yields_invalid_auth(hass):
+    """Negative control: a bounded handshake timeout must still map to invalid_auth."""
+    with patch.object(config_flow, "_connect", side_effect=RuntimeError("timed out")):
+        error = await config_flow.validate_connection(hass, DATA)
+    assert error == "invalid_auth"
+
+
 async def test_validation_uses_persistent_identity_not_throwaway(hass):
     """Validation must build its client with the entry's persistent identity."""
     captured = {}
