@@ -46,8 +46,8 @@ def _try_handshake(data: dict, identity_file: str) -> bool:
     try:
         try:
             _connect(bus, handshake_max_retries=1)
-        except (RuntimeError, ConnectionRefusedError):
-            # hub reachable but handshake never completed: bad key / password
+        except RuntimeError:
+            # hub answered but the bounded handshake never completed: bad key / password
             return False
         return bool(bus.handshake_event.is_set())
     finally:
