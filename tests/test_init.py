@@ -16,7 +16,6 @@ BASE_DATA = {
     "access_key": "key",
     "password": "pw",
     "port": 5678,
-    "legacy_audio": False,
     "site_id": "test",
     "allow_self_signed": False,
 }
@@ -54,6 +53,22 @@ async def test_platforms_per_device_type(hass, device_type, expected, absent):
         assert hass.states.async_entity_ids(platform), f"missing {platform}"
     for platform in absent:
         assert not hass.states.async_entity_ids(platform), f"unexpected {platform}"
+
+
+async def test_stale_legacy_audio_key_is_ignored(hass):
+    """Regression: a config entry saved before legacy_audio was retired must
+    still set up cleanly, the stored key is simply never read."""
+    fake = FakeHiveBus()
+    entry = MockConfigEntry(
+        domain="hivemind",
+        data={**BASE_DATA, "device_type": "media_player", "legacy_audio": True},
+        entry_id="e-stale-legacy-audio",
+    )
+    entry.add_to_hass(hass)
+    with patch.object(hivemind, "_build_bus", return_value=fake):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    assert hass.states.async_entity_ids("media_player")
 
 
 async def test_unload_closes_bus_and_clears_data(hass):

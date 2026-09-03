@@ -11,7 +11,6 @@
           "port": "Port",
           "access_key": "Access key",
           "password": "Password",
-          "legacy_audio": "Use the legacy audio service instead of OCP",
           "site_id": "Site ID",
           "allow_self_signed": "Allow self-signed certificates"
         },
@@ -19,8 +18,7 @@
           "host": "Hub address — hostname or IP, e.g. 192.168.1.10; ws:// or wss:// optional",
           "port": "Must match your hub's listener; default 5678",
           "site_id": "Optional grouping label; leave as-is if you have one hub",
-          "name": "Friendly name shown in Home Assistant, e.g. 'Living Room HiveMind'",
-          "legacy_audio": "OCP is the OVOS media-playback system; enable this to use the older audio service instead"
+          "name": "Friendly name shown in Home Assistant, e.g. 'Living Room HiveMind'"
         }
       }
     },

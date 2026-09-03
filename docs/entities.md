@@ -29,8 +29,7 @@ that exposes each entity.
 | Notify | notify | Send text to OVOS to speak (TTS). |
 
 The media player maps Home Assistant `MediaType` values to OVOS OCP media
-types (music, video, movie, episode, TV channel, game, and others). With
-`legacy_audio` enabled, it drives the legacy Audio Service instead of OCP.
+types (music, video, movie, episode, TV channel, game, and others).
 
 ## `voice_assistant` only
 
