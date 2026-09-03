@@ -17,7 +17,6 @@ USER_INPUT = {
     "access_key": "key",
     "password": "pw",
     "port": 5678,
-    "legacy_audio": False,
     "site_id": "test",
     "allow_self_signed": False,
 }

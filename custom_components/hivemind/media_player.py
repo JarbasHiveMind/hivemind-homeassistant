@@ -72,10 +72,9 @@ SUPPORT_HIVEMIND = (
 
 
 class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
-    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, legacy_audio: bool = False, **kwargs) -> None:
+    def __init__(self, bus: HiveMessageBusClient, site_id: str, name: str, **kwargs) -> None:
         """Initialize the service."""
         super().__init__(bus, site_id, name, **kwargs)
-        self.legacy_audioservice = legacy_audio
 
         self._state = MediaPlayerState.IDLE
         self._volume_level = 0.5
@@ -131,21 +130,32 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
 
     def handle_track_len(self, message: Message):
         _LOGGER.info(f"track info: {message.data}")
-        self._track_len = message.data.get("length", self._track_len)
+        # OCP/ovos-media report track length in milliseconds; HA's
+        # media_duration contract is seconds, so convert at this boundary.
+        if "length" in message.data:
+            self._track_len = message.data["length"] / 1000
         self.schedule_update_ha_state()
 
     def handle_track_pos(self, message: Message):
         _LOGGER.info(f"track info: {message.data}")
-        self._playback_pos = message.data.get("position", self._playback_pos)
+        # OCP/ovos-media report track position in milliseconds; HA's
+        # media_position contract is seconds, so convert at this boundary.
+        if "position" in message.data:
+            self._playback_pos = message.data["position"] / 1000
         if "length" in message.data:
-            self._track_len = message.data["length"]
+            self._track_len = message.data["length"] / 1000
         self.schedule_update_ha_state()
 
     def handle_status(self, message: Message):
         _LOGGER.info(f"OCP status: {message.data}")
-        player = message.data.get("state")
+        # bridges both stacks until flag day: legacy OCP answers
+        # 'ovos.common_play.player.status' with {state, repeat}, ovos-media
+        # answers 'ovos.common_play.status' with {player_state, loop_state} -
+        # both encode the same LoopState/PlayerState values, so a fallback
+        # read is enough, no separate decoding path needed.
+        player = message.data.get("player_state", message.data.get("state"))
         media = message.data.get("media_state")
-        repeat = message.data.get("repeat")
+        repeat = message.data.get("loop_state", message.data.get("repeat"))
         self._is_shuffle = message.data.get("shuffle", self._is_shuffle)
 
         if repeat == LoopState.REPEAT:
@@ -177,6 +187,7 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
         self._register("ovos.common_play.track.state", self.handle_ocp_track_state)
         self._register("ovos.common_play.player.state", self.handle_ocp_player_state)
         self._register("ovos.common_play.media.state", self.handle_ocp_media_state)
+        self._register("ovos.common_play.status.response", self.handle_status)
         self._register("ovos.common_play.player.status.response", self.handle_status)
 
     async def async_update(self):
@@ -185,6 +196,11 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
             self.send_to_ovos(Message("ovos.common_play.track_info"))
             self.send_to_ovos(Message("ovos.common_play.get_track_length"))
             self.send_to_ovos(Message("ovos.common_play.get_track_position"))
+            # queried on both topics: the legacy OCP audio service only
+            # answers 'ovos.common_play.player.status', ovos-media only
+            # answers 'ovos.common_play.status' - no stack serves both, so
+            # this is safe until legacy OCP is retired.
+            self.send_to_ovos(Message("ovos.common_play.status"))
             self.send_to_ovos(Message("ovos.common_play.player.status"))
 
     @property
@@ -350,34 +366,27 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
             m = "ovos.common_play.play"
 
         self._uri = media_id
-        if self.legacy_audioservice:
-            message = Message('mycroft.audio.service.play',
-                              {'tracks': [media_id]})
-        else:
-            entry = MediaEntry(
-                uri=media_id,
-                title="",
-                artist="",
-                length=0,
-                match_confidence=100,
-                skill_id="homeassistant.hivemind",
-                skill_icon="https://raw.githubusercontent.com/home-assistant/brands/refs/heads/master/core_integrations/music_assistant/icon.png",
-                image="",
-                status=TrackState.QUEUED_AUDIO,
-                media_type=mapping.get(media_type, OCPMediaType.MUSIC),
-                playback=PlaybackType.AUDIO,
-            )
-            message = Message(m, {"media": entry.as_dict})
+        entry = MediaEntry(
+            uri=media_id,
+            title="",
+            artist="",
+            length=0,
+            match_confidence=100,
+            skill_id="homeassistant.hivemind",
+            skill_icon="https://raw.githubusercontent.com/home-assistant/brands/refs/heads/master/core_integrations/music_assistant/icon.png",
+            image="",
+            status=TrackState.QUEUED_AUDIO,
+            media_type=mapping.get(media_type, OCPMediaType.MUSIC),
+            playback=PlaybackType.AUDIO,
+        )
+        message = Message(m, {"media": entry.as_dict})
         self.send_to_ovos(message)
 
 
     async def async_media_play(self):
         """Send play command."""
         self._state = MediaPlayerState.PLAYING
-        if self.legacy_audioservice:
-            message = Message('mycroft.audio.service.resume')
-        else:
-            message = Message('ovos.common_play.resume')
+        message = Message('ovos.common_play.resume')
         _LOGGER.info("play")
         self.send_to_ovos(message)
         self.async_write_ha_state()
@@ -385,10 +394,7 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
     async def async_media_pause(self):
         self._state = MediaPlayerState.PAUSED
         _LOGGER.info("pause")
-        if self.legacy_audioservice:
-            message = Message('mycroft.audio.service.pause')
-        else:
-            message = Message('ovos.common_play.pause')
+        message = Message('ovos.common_play.pause')
 
         self.send_to_ovos(message)
         self.async_write_ha_state()
@@ -396,10 +402,7 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
     async def async_media_stop(self):
         self._state = MediaPlayerState.IDLE
         _LOGGER.info("stop")
-        if self.legacy_audioservice:
-            message = Message('mycroft.audio.service.stop')
-        else:
-            message = Message('ovos.common_play.stop')
+        message = Message('ovos.common_play.stop')
 
         self.send_to_ovos(message)
         self.async_write_ha_state()
@@ -448,10 +451,7 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
 
     async def async_media_previous_track(self) -> None:
         """Send previous track command."""
-        if self.legacy_audioservice:
-            message = Message('mycroft.audio.service.prev')
-        else:
-            message = Message('ovos.common_play.previous')
+        message = Message('ovos.common_play.previous')
         _LOGGER.info("previous track")
         self.send_to_ovos(message)
         self.async_write_ha_state()
@@ -460,21 +460,16 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
         """Send next track command."""
         _LOGGER.info("next track")
 
-        if self.legacy_audioservice:
-            message = Message('mycroft.audio.service.next')
-        else:
-            message = Message('ovos.common_play.next')
+        message = Message('ovos.common_play.next')
         self.send_to_ovos(message)
         self.async_write_ha_state()
 
     async def async_media_seek(self, position: float) -> None:
         """Send seek command."""
-        if self.legacy_audioservice:
-            message = Message('mycroft.audio.service.set_track_position',
-                              {"position": int(position * 1000)})
-        else:
-            message = Message('ovos.common_play.set_track_position',
-                              {"position": position})
+        # HA passes 'position' in seconds; OCP/ovos-media's
+        # set_track_position takes milliseconds.
+        message = Message('ovos.common_play.set_track_position',
+                          {"position": int(position * 1000)})
         self.send_to_ovos(message)
         _LOGGER.info(f"seek: {position}")
         self._playback_pos = position
@@ -503,10 +498,13 @@ class HiveMindMediaPlayer(HiveMindEntity, MediaPlayerEntity):
         """Set repeat mode."""
         if repeat == RepeatMode.OFF: # no repeat
             message = Message('ovos.common_play.repeat.unset')
-        elif repeat == RepeatMode.ALL: # repeat playlist in loop
+        else:
+            # ovos-media exposes no repeat-track verb - 'repeat.set' only
+            # reaches LoopState.REPEAT (playlist loop), never REPEAT_TRACK
+            # (see handle_set_repeat in ovos_media/player/__init__.py) -
+            # so RepeatMode.ONE falls back to playlist-loop until ovos-media
+            # grows a repeat-track bus verb.
             message = Message('ovos.common_play.repeat.set')
-        else: # repeat same track in loop
-            message = Message('ovos.common_play.repeat.one')
 
         _LOGGER.info(f"set repeat: {repeat}")
         self._repeat = repeat
@@ -522,14 +520,12 @@ async def async_setup_entry(
     # Get config values
     name = entry.data.get("name", "unnamed device")
     site_id = entry.data.get("site_id", "unknown")
-    legacy_audio = entry.data.get("legacy_audio", False)
 
     # Create the connection button entity
     connection_button = HiveMindMediaPlayer(
         bus=entry.hm_bus,
         name=name,
         site_id=site_id,
-        legacy_audio=legacy_audio
     )
 
     # Add it to Home Assistant

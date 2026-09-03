@@ -20,7 +20,6 @@ HIVEMIND_SCHEMA = {
     vol.Required("port", default=5678): int,
     vol.Required("access_key"): str,
     vol.Required("password"): str,
-    vol.Required("legacy_audio", default=False): bool,
     vol.Optional("site_id"): str,
     vol.Required("allow_self_signed", default=False): bool,
 }

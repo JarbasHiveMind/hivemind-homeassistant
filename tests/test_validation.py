@@ -25,7 +25,6 @@ DATA = {
     "access_key": "0123456789abcdef",
     "password": "wrong-password",
     "port": 5678,
-    "legacy_audio": False,
     "site_id": "test",
     "allow_self_signed": False,
 }

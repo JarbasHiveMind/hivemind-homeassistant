@@ -13,7 +13,6 @@ the integration. There is no YAML.
 | `access_key` | n/a | HiveMind client access key. |
 | `password` | n/a | HiveMind client password. |
 | `port` | `5678` | HiveMind WebSocket port. |
-| `legacy_audio` | `false` | Use the legacy Audio Service instead of OCP for playback. |
 | `site_id` | `unknown` | OVOS site id. |
 | `allow_self_signed` | `false` | Accept a self-signed TLS certificate from the hub. |
 

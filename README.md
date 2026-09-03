@@ -93,7 +93,6 @@ The config flow asks for these fields when you add the integration:
 | `port` | `5678` | HiveMind WebSocket port; a separate field from `host`. |
 | `access_key` | n/a | HiveMind client access key. |
 | `password` | n/a | HiveMind client password. |
-| `legacy_audio` | `false` | Use the legacy Audio Service instead of OCP. |
 | `site_id` | empty | Optional OVOS site id; leave blank if you have one hub. |
 | `allow_self_signed` | `false` | Accept a self-signed TLS certificate. |
 
@@ -160,7 +159,8 @@ privileges and permission to use the following message types.
 - `mycroft.audio.speak.status`
 
 #### OCP (OpenVoiceOS Common Play)
-- `ovos.common_play.player.status`
+- `ovos.common_play.status`
+- `ovos.common_play.player.status` (legacy OCP audio service; queried until flag day)
 - `ovos.common_play.track_info`
 - `ovos.common_play.get_track_length`
 - `ovos.common_play.get_track_position`
@@ -176,18 +176,6 @@ privileges and permission to use the following message types.
 - `ovos.common_play.shuffle.unset`
 - `ovos.common_play.repeat.set`
 - `ovos.common_play.repeat.unset`
-- `ovos.common_play.repeat.one`
-
-#### Audio Service
-*(only if you enable it manually, for systems without the OCP Audio Plugin)*
-
-- `mycroft.audio.service.play`
-- `mycroft.audio.service.resume`
-- `mycroft.audio.service.pause`
-- `mycroft.audio.service.stop`
-- `mycroft.audio.service.prev`
-- `mycroft.audio.service.next`
-- `mycroft.audio.service.set_track_position`
 
 ### PHAL
 - `mycroft.phal.is_alive`

@@ -49,7 +49,6 @@ def _entry_data(url: str) -> dict:
         "access_key": SAT_KEY,
         "password": SAT_PASSWORD,
         "port": parsed.port,
-        "legacy_audio": False,
         "site_id": "e2e",
         "allow_self_signed": False,
     }
