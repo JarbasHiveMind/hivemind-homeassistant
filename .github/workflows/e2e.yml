@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       # --pre: the hivemind-core stack hivescope pulls is still prerelease
       - run: pip install --pre -r requirements_test_e2e.txt
       # Tier 2: the integration against a REAL loopback hivemind-core hub
