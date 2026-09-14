@@ -22,8 +22,10 @@ USER_INPUT = {
 }
 
 
-async def _submit(hass, *, handshake_ok=True, raises=False):
+async def _submit(hass, *, handshake_ok=True, raises=False, user_input=None, seen=None):
     def _fake_validate(data, identity_file):
+        if seen is not None:
+            seen.append(data)
         if raises:
             raise ConnectionError("boom")
         return handshake_ok
@@ -37,7 +39,7 @@ async def _submit(hass, *, handshake_ok=True, raises=False):
         patch.object(hivemind, "_build_bus", return_value=FakeHiveBus()),
     ):
         out = await hass.config_entries.flow.async_configure(
-            result["flow_id"], USER_INPUT
+            result["flow_id"], USER_INPUT if user_input is None else user_input
         )
         await hass.async_block_till_done()
     return out
@@ -85,5 +87,54 @@ async def test_duplicate_hub_is_aborted(hass):
     ).add_to_hass(hass)
 
     result = await _submit(hass, handshake_ok=True)
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+PADDED_INPUT = {
+    **USER_INPUT,
+    "name": " Living Room ",
+    "host": " ws://127.0.0.1\n",
+    "access_key": "  key\n",
+    "password": " pw ",
+    "site_id": "test ",
+}
+
+
+async def test_pasted_fields_are_trimmed_before_they_are_stored(hass):
+    """A key pasted with a trailing newline is stored as the hub holds it.
+
+    hivemind-core compares access keys byte for byte, so an untrimmed paste is
+    refused as an invalid api key while `list-clients` still prints it.
+    """
+    seen = []
+    result = await _submit(hass, user_input=PADDED_INPUT, seen=seen)
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"]["access_key"] == "key"
+    assert result["data"]["host"] == "ws://127.0.0.1"
+    assert result["data"]["site_id"] == "test"
+    assert result["data"]["name"] == "Living Room"
+    assert result["title"] == "Living Room"
+    # validation sees the trimmed key, so the identity file and the connection
+    # it validates are the ones the entry will use
+    assert seen and seen[0]["access_key"] == "key"
+
+
+async def test_password_is_not_trimmed(hass):
+    """A password may legitimately end in a space; changing it is not ours to do."""
+    result = await _submit(hass, user_input=PADDED_INPUT)
+    assert result["data"]["password"] == " pw "
+
+
+async def test_padded_key_hits_the_duplicate_guard(hass):
+    """The unique id is built from trimmed values, so a padded re-entry aborts."""
+    MockConfigEntry(
+        domain="hivemind",
+        data=USER_INPUT,
+        unique_id="ws://127.0.0.1-key",
+    ).add_to_hass(hass)
+
+    result = await _submit(hass, user_input=PADDED_INPUT)
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
