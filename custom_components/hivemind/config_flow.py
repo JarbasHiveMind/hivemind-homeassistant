@@ -25,6 +25,36 @@ HIVEMIND_SCHEMA = {
 }
 
 
+# Fields that are pasted, never typed from memory, and whose stored value must
+# match a hub record byte for byte. The password is deliberately absent: a
+# password may legitimately end in a space, and silently changing a credential
+# is worse than a refused connection the operator can see.
+_TRIMMED_FIELDS = ("access_key", "host", "site_id", "name")
+
+
+def _trim_pasted_fields(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Strip surrounding whitespace from the pasted fields.
+
+    hivemind-core looks an access key up byte for byte
+    (``db.get_client_by_api_key``). A key copied out of ``hivemind-core
+    list-clients`` and pasted into this form often carries a trailing space or
+    a newline, and the hub then answers "Client provided an invalid api key"
+    for a key the same ``list-clients`` still prints — the operator has no way
+    to see the difference. Trimming at the point of entry is what keeps the
+    stored key the one the hub holds.
+
+    It runs before the unique id is built and before validation, so the
+    duplicate guard and the identity file (which is keyed by the access key)
+    both see the trimmed value.
+    """
+    trimmed = dict(user_input)
+    for field in _TRIMMED_FIELDS:
+        value = trimmed.get(field)
+        if isinstance(value, str):
+            trimmed[field] = value.strip()
+    return trimmed
+
+
 def _try_handshake(data: dict, identity_file: str) -> bool:
     """Open a validation connection to the hub and report whether it handshakes.
 
@@ -76,6 +106,7 @@ class HiveMindConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors: dict[str, str] = {}
         if user_input is not None:
+            user_input = _trim_pasted_fields(user_input)
             await self.async_set_unique_id(
                 f"{user_input['host']}-{user_input['access_key']}"
             )
